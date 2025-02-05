@@ -3,12 +3,10 @@
 """
 from Entities.Course import Course
 from Entities.WishList import WishList
-from Entities.ClassTable import ClassTable
 import requests as r
 import re
 import execjs
 import json
-import os
 
 GNMKDM = "N253530"
 XN = "2024-2025"
@@ -132,7 +130,6 @@ def updateClassJson(wishList: WishList):
     更新classes.json文件
     :param wishList: wishList对象。本方法只会获取wishList中的课程，以减少网络请求时间。
     """
-    # todo: 处理classTable
     url = f"http://zdbk.zju.edu.cn/jwglxt/xsxk/zzxkghb_cxZzxkGhbJxbList.html?gnmkdm={GNMKDM}&su={username}"
     with open("courses.json", "r", encoding="UTF-8") as f:
         course_data = json.load(f)

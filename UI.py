@@ -5,60 +5,58 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter.messagebox import showinfo, showerror
 import idlelib.colorizer as idc
 import idlelib.percolator as idp
-from Entities.ClassTable import ClassTable
 from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
 import network
 import threading
-from time import sleep
 from data import loadCourseData, loadClassData, initClassTable
 
 
-def CodeConfirmBox(code: str):
-    class _CodeConfirmWindow(Tk):
-        def __init__(self):
-            super().__init__()
-            self.title("请确认要执行的代码")
-            self.geometry('800x600')
-            self.iconbitmap("icon.ico")
-            textPad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 16))
-            # textPad.pack(fill=BOTH, expand=1)
-            textPad.focus_set()
-            idc.color_config(textPad)
-            textPad.focus_set()
-            textPad.config(bg='#002240', fg='white')
-            textPad.insert(INSERT, code)
-            p = idp.Percolator(textPad)
-            d = idc.ColorDelegator()
-            p.insertfilter(d)
-            buttonConfirm = Button(self, text="确认", command=self.confirm, font=('Consolas', 16), anchor=CENTER)
-            buttonCancel = Button(self, text="取消", command=self.cancel, font=('Consolas', 16), anchor=CENTER)
-            textPad.place(x=0, y=0, width=800, height=560, anchor=NW)
-            buttonConfirm.place(x=250, y=560, width=80, height=40, anchor=NE)
-            buttonCancel.place(x=550, y=560, width=80, height=40, anchor=NW)
-            textPad.config(state=DISABLED)
-
-            self.confirmStatus = None
-
-        def confirm(self):
-            self.confirmStatus = True
-            self.destroy()
-
-        def cancel(self):
-            self.confirmStatus = False
-            self.destroy()
-
-        def destroy(self):
-            if self.confirmStatus is None:
-                self.confirmStatus = False
-            super().destroy()
-
-    window = _CodeConfirmWindow()
-    while True:
-        window.update()
-        if window.confirmStatus is not None:
-            break
-    return window.confirmStatus
+# def CodeConfirmBox(code: str):
+#     class _CodeConfirmWindow(Tk):
+#         def __init__(self):
+#             super().__init__()
+#             self.title("请确认要执行的代码")
+#             self.geometry('800x600')
+#             self.iconbitmap("icon.ico")
+#             textPad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 16))
+#             # textPad.pack(fill=BOTH, expand=1)
+#             textPad.focus_set()
+#             idc.color_config(textPad)
+#             textPad.focus_set()
+#             textPad.config(bg='#002240', fg='white')
+#             textPad.insert(INSERT, code)
+#             p = idp.Percolator(textPad)
+#             d = idc.ColorDelegator()
+#             p.insertfilter(d)
+#             buttonConfirm = Button(self, text="确认", command=self.confirm, font=('Consolas', 16), anchor=CENTER)
+#             buttonCancel = Button(self, text="取消", command=self.cancel, font=('Consolas', 16), anchor=CENTER)
+#             textPad.place(x=0, y=0, width=800, height=560, anchor=NW)
+#             buttonConfirm.place(x=250, y=560, width=80, height=40, anchor=NE)
+#             buttonCancel.place(x=550, y=560, width=80, height=40, anchor=NW)
+#             textPad.config(state=DISABLED)
+#
+#             self.confirmStatus = None
+#
+#         def confirm(self):
+#             self.confirmStatus = True
+#             self.destroy()
+#
+#         def cancel(self):
+#             self.confirmStatus = False
+#             self.destroy()
+#
+#         def destroy(self):
+#             if self.confirmStatus is None:
+#                 self.confirmStatus = False
+#             super().destroy()
+#
+#     window = _CodeConfirmWindow()
+#     while True:
+#         window.update()
+#         if window.confirmStatus is not None:
+#             break
+#     return window.confirmStatus
 
 
 class ScheduleTable(Canvas):
@@ -299,7 +297,6 @@ class Application(Tk):
             self.loginStatus = False
             showerror("登录异常", str(e)+'\n'+traceback.format_exc())
             self.loginButton.config(state=NORMAL)
-        # todo: 登录成功后，自动填充课程表
 
     def login(self):
         thread = threading.Thread(target=self._login)
@@ -413,6 +410,8 @@ class Application(Tk):
     def showAuthor(self):
         showinfo("关于MOTIS", """作者：xi2p
 版本：1.0.0
+Fork me on GITEE:
+https://gitee.com/xi2p/zju-motis
 """)
 
     def destroy(self):
@@ -429,43 +428,3 @@ if __name__ == '__main__':
 
     window = Application()
     mainloop()
-    # from interface import *
-    # init()
-    # wish_list = WishList()
-    # class_table = ClassTable()
-    #
-    # wish_list.append("MATH1136G").withPriority(10).avoidTeacher("薛儒英")  # 微积分
-    # wish_list.append("PHY1001G").withPriority(9)                    # 大学物理
-    # wish_list.append("MATH1138F").withPriority(9).withStatus(0)     # 常微分方程
-    # wish_list.append("ME1103F").withPriority(9).withStatus(0)       # 机械制图及CAD基础
-    # wish_list.append("MARX1002G").withPriority(8)                   # 史纲
-    # wish_list.append("ME1002F").withPriority(7)                     # 工程训练
-    # wish_list.append("CS1241G").withPriority(7)                     # 人工智能基础
-    # wish_list.append("EDU2001G").withPriority(6).withStatus(0)      # 军事理论
-    # wish_list.append("PHIL0902G").withPriority(6).withStatus(0)     # 希腊罗马哲学
-    # wish_list.append("PPAE1100G").withPriority(5).withStatus(0)     # 体素
-    # wish_list.append("PPAE0065G").withPriority(4).withStatus(0)     # 体育
-    # wish_list.append("BEFS0402G").withPriority(3).withStatus(0)     # 微电子技术与纳米制造
-    # wish_list.append("HIST0200G").withPriority(2).withStatus(0)     # 近代中日关系史
-    #
-    #
-    # selectClass(class_table, wish_list)
-    #
-    # root = Tk()
-    # root.title("课程表")
-    # Label(root, text="春学期", font=('simHei', 20)).pack()
-    # st0 = ScheduleTable(root, class_table, 0)
-    # st0.pack()
-    #
-    # root1 = Tk()
-    # root1.title("课程表")
-    # Label(root1, text="夏学期", font=('simHei', 20)).pack()
-    # st1 = ScheduleTable(root1, class_table, 1)
-    # st1.pack()
-    #
-    # root2 = Tk()
-    # root2.title("志愿清单")
-    # ct = CandidateTable(root2, class_table)
-    # ct.pack()
-    #
-    # mainloop()
