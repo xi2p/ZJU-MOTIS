@@ -227,8 +227,8 @@ class CandidateTable(Canvas):
 class ResultWindow(Tk):
     def __init__(self):
         super().__init__()
-        self.title("课程表")
-
+        self.title("选课结果")
+        self.iconbitmap("icon.ico")
         self.show_widget = ScheduleTable(self, class_table, 0)
         self.show_widget.place(x=0, y=40, anchor=NW)
         self.name_label = Label(self, text="春学期", font=('simHei', 20))
