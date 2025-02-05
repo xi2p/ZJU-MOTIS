@@ -1,29 +1,23 @@
 """
 这个模块负责执行选课算法
 """
-import sys
 from typing import *
 import data
-import Entities.WishList as WishList
-import Entities.Course as Course
-import Entities.ClassTable as ClassTable
-import Entities.Class as Class
+from Entities.WishList import WishList
+from Entities.Course import Course
+from Entities.ClassTable import ClassTable
+from Entities.Class import Class
 import Entities.Time as Time
 import Entities.Constants as Constants
-from Entities.Strategy import Strategy
-from network import updateClassJson
-from time import time
 
 
-
-
-def calculateClassRate(course: Course.Course):
+def calculateClassRate(course: Course):
     """
     为一个课程内的所有班级计算评分，并填充到class.rate里面
     :param course: 课程对象
     """
     all_class_of_course = data.filterClassSetByCondition(
-        lambda x: Course.Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
+        lambda x: Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
     )
     # 给所有班级根据教师评分
     # 评分方法：
@@ -44,7 +38,7 @@ def calculateClassRate(course: Course.Course):
             if teacher not in teacher_to_rate:
                 teacher_to_rate[teacher] = data.getTeacherRate(teacher)
     class_and_rate_by_teacher: List[
-        List[Tuple[Class.Class, float]]] = []  # [[(class1, 9.9), (class2, 9.9), ...], [(class3, 9.8), ...], ...]
+        List[Tuple[Class, float]]] = []  # [[(class1, 9.9), (class2, 9.9), ...], [(class3, 9.8), ...], ...]
     class_not_included = []
     # step 2
     for class_ in all_class_of_course:
@@ -150,7 +144,7 @@ def calculateClassRate(course: Course.Course):
     # hot_classes, normal_classes, cold_classes里面存储了热门班级，普通班级，冷门班级
 
 
-def getOptimalCandidatesWithinClassSet(classSet: List[Class.Class]) -> List[Class.Class]:
+def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
     """
     找出一个班级集合内的最优志愿组合。本方法应由getCourseCandidateCombination调用。
     :param classSet: 班级集合。里面的班级应该是同一门课程的。
@@ -213,7 +207,7 @@ def getOptimalCandidatesWithinClassSet(classSet: List[Class.Class]) -> List[Clas
 # 时间占据情况2：周五
 # 时间占据情况3：周三和周五（两个班的志愿都先报上）
 # 然后再对每个课程进行深搜，找到这个优先级的课表最优解
-def getCourseCandidateCombination(course: Course.Course, classTable: ClassTable.ClassTable) -> List[List[Class.Class]]:
+def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> List[List[Class]]:
     """
     获取某门课程的不同时间占据情况下的最优的志愿组合。返回的时间组合是能插入ClassTable的。
     :param course: 课程对象
@@ -232,7 +226,7 @@ def getCourseCandidateCombination(course: Course.Course, classTable: ClassTable.
     # 第二个元素是一个数字，表示有几个班是这个时间
 
     for class_ in data.filterClassSetByCondition(
-            lambda x: Course.Course.isEqualCourseCode(course.courseCode, x.course.courseCode)):
+            lambda x: Course.isEqualCourseCode(course.courseCode, x.course.courseCode)):
         if class_.classTime not in [i[0] for i in class_time_set]:
             class_time_set.append([class_.classTime, 0])
         index = 0
@@ -316,7 +310,7 @@ def getCourseCandidateCombination(course: Course.Course, classTable: ClassTable.
 
     # 删去与现有课表冲突的时间
     time_domain_set = [i for i in time_domain_set if not classTable.isConflict(
-        Class.Class("", course, [], "",
+        Class("", course, [], "",
                     i, [],
                     0, 0, "", "", "", ""
                     )
@@ -330,7 +324,7 @@ def getCourseCandidateCombination(course: Course.Course, classTable: ClassTable.
         # 首先先找出所有符合当前时间要求的班级
         class_set = data.filterClassSetByCondition(
             lambda x: x.classTime in time_domain
-                      and Course.Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
+                      and Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
         )
         # 然后按照策略找出class_set里面最好的三个班级（如果有的话）
         optimal_class_set = getOptimalCandidatesWithinClassSet(class_set)  # 存储最优的三个班级
@@ -344,7 +338,7 @@ def getCourseCandidateCombination(course: Course.Course, classTable: ClassTable.
     return result
 
 
-def getClassTableRateList(classTable: ClassTable.ClassTable, wishList: WishList.WishList) -> List[float | None]:
+def getClassTableRateList(classTable: ClassTable, wishList: WishList) -> List[float | None]:
     """
     获取一个课表的评分列表。这个列表是评价一个课表的好坏的指标。
     列表内的元素是各优先级的得分。例如：[优先级3所有课程得分和，优先级2所有课程得分和，优先级1所有课程得分和， ...]
@@ -398,7 +392,7 @@ def rateListCmp(a: List[float | None], b: List[float | None]) -> int:
     return 0
 
 
-def selectClass(classTable: ClassTable.ClassTable, wishList: WishList) -> ClassTable.ClassTable:
+def selectClass(classTable: ClassTable, wishList: WishList) -> ClassTable:
     """
     选课算法。调用这个函数的时候，所有数据应该都已经加载好了。
     :param classTable: 课程表对象
@@ -413,7 +407,7 @@ def selectClass(classTable: ClassTable.ClassTable, wishList: WishList) -> ClassT
             calculateClassRate(wish)
             classes = data.filterClassSetByCondition(
                 lambda x: (
-                    Course.Course.isEqualCourseCode(wish.courseCode, x.course.courseCode)
+                    Course.isEqualCourseCode(wish.courseCode, x.course.courseCode)
                     and x.status == Constants.ClassStatus.CONFIRMED
                 )
             )
@@ -437,7 +431,7 @@ def selectClass(classTable: ClassTable.ClassTable, wishList: WishList) -> ClassT
         priority_group[wish.priority].append(wish)
 
     wishList.max_priority = max(priority_group.keys())
-    best_class_table = ClassTable.ClassTable()
+    best_class_table = ClassTable()
     classTable.copyTo(best_class_table)
     best_rate_list = getClassTableRateList(classTable, wishList)
 
@@ -465,7 +459,7 @@ def selectClass(classTable: ClassTable.ClassTable, wishList: WishList) -> ClassT
         # 获取这门课程的志愿组合，依次尝试
         candidate_combinations = getCourseCandidateCombination(course, classTable)
         for candidate_combination in candidate_combinations:
-            candidate_combination : List[Class.Class]
+            candidate_combination : List[Class]
             # getCourseCandidateCombination已经保证各candidate_combination能插入classTable
             # 所以不用再检查ClassTable是否冲突，直接append即可（再说了，append内部也会检查冲突）
             for class_ in candidate_combination:
