@@ -5,7 +5,6 @@ from Entities.Course import Course
 from Entities.WishList import WishList
 import requests as r
 import re
-import execjs
 import json
 
 GNMKDM = "N253530"
@@ -20,10 +19,6 @@ headers = {
     "User-Agent": 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.58'
 }
 
-with open("./security.js", "r") as f:
-    js_code = f.read()
-js_security_model = execjs.compile(js_code)
-
 session = r.session()
 
 # 本地不保存用户名和密码，防止泄露。
@@ -31,6 +26,12 @@ username = ""
 password = ""
 
 chosen_classes = None
+
+def encrypt(public_exponent, modulus, password):
+    password_int = int.from_bytes(bytes(password, 'ascii'), 'big')
+    result_int = pow(password_int, int(public_exponent, 16), int(modulus, 16))
+    return hex(result_int)[2:].rjust(128, '0')
+
 
 def loginZDBK() -> bool:
     """
@@ -49,7 +50,7 @@ def loginZDBK() -> bool:
     modulus = re.findall(r"\"modulus\":\"(.*?)\"", response.text)[0]
     exponent = re.findall(r"\"exponent\":\"(.*?)\"", response.text)[0]
 
-    encrypted_password = js_security_model.call("encrypt", exponent, modulus, password)
+    encrypted_password = encrypt(exponent, modulus, password)
 
     response = session.post(
         "http://zjuam.zju.edu.cn/cas/login?service=http%3A%2F%2Fzdbk.zju.edu.cn%2Fjwglxt%2Fxtgl%2Flogin_ssologin.html",
