@@ -1,0 +1,8 @@
+/process_data
+/.idea
+/.venv
+/cache
+classesTestBackup.json
+coursesTestBackup.json
+classes.json
+courses.json
