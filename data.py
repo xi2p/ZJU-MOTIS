@@ -7,6 +7,7 @@ from typing import *
 from Entities import Course, Class, Time, Constants, ClassTable
 import re
 import network
+import os
 
 course_data = []
 class_data = []
@@ -178,8 +179,9 @@ def getExamTimeListFromString(time: str) -> List[Time.ExamTime]:
 
 def loadCourseData():
     course_data.clear()
-    with open("courses.json", "r", encoding="utf-8") as f:
-        course_data.extend(json.load(f))
+    if os.path.exists("courses.json"):
+        with open("courses.json", "r", encoding="utf-8") as f:
+            course_data.extend(json.load(f))
 
 all_class_set = []
 

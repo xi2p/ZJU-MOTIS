@@ -9,7 +9,7 @@ from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
 import network
 import threading
-from data import loadCourseData, loadClassData, initClassTable
+from data import loadCourseData, loadClassData, initClassTable, course_data
 
 
 # def CodeConfirmBox(code: str):
@@ -325,6 +325,9 @@ class Application(Tk):
                 self.updateButton.config(state=NORMAL)
                 self.selectButton.config(state=NORMAL)
                 self.showButton.config(state=NORMAL)
+                if not course_data:
+                    showinfo("提示", "检测到课程数据为空，即将自动更新课程数据")
+                    self.updateCourse()
             else:
                 self.loginStatusLabel.config(text="登录失败", fg="red")
                 self.loginStatus = False

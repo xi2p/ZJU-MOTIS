@@ -6,3 +6,6 @@ classesTestBackup.json
 coursesTestBackup.json
 classes.json
 courses.json
+/dist
+/build
+*.spec
