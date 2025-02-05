@@ -13,7 +13,6 @@ import Entities.Constants as Constants
 from Entities.Strategy import Strategy
 from network import updateClassJson
 from time import time
-from tqdm import tqdm
 
 
 
@@ -478,7 +477,7 @@ def selectClass(classTable: ClassTable.ClassTable, wishList: WishList) -> ClassT
         _select(_priority, index + 1)    # 不选这门课程也要尝试
 
     # 逐优先级开始递归调用_select，选出这个优先级下的最优课表
-    for priority in tqdm(range(wishList.max_priority, -1, -1), desc='Processing'):
+    for priority in range(wishList.max_priority, -1, -1):
         _select(priority, 0)
         best_class_table.copyTo(classTable)     # 保存这一个优先级的最优课表。下一个优先级的课程要在这个基硃上继续选课
     return classTable
