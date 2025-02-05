@@ -40,6 +40,42 @@ class ClassTime:
 
         return ClassTime(first_half_time_list, second_half_time_list)
 
+    def __sub__(self, other):
+        """
+        重载减法运算符，本质上是获取self和other的差集。具体来说，是获取self中有而other中没有的元素。
+        :param other: 另一个ClassTime对象
+        :return: 取差集后的ClassTime对象
+        """
+        if not isinstance(other, ClassTime):
+            raise TypeError(
+                "item must be an instance of ClassTime"
+            )
+        first_half_time_list = deepcopy(self.firstHalfTimeList)
+        for i in other.firstHalfTimeList:
+            if i in first_half_time_list:
+                first_half_time_list.remove(i)
+
+        second_half_time_list = deepcopy(self.secondHalfTimeList)
+        for i in other.secondHalfTimeList:
+            if i in second_half_time_list:
+                second_half_time_list.remove(i)
+
+        return ClassTime(first_half_time_list, second_half_time_list)
+
+    def __mul__(self, other):
+        """
+        重载乘法运算符，本质上是获取self和other的交集。具体来说，是获取self和other中都有的元素。
+        :param other: 另一个ClassTime对象
+        :return: 取交集后的ClassTime对象
+        """
+        if not isinstance(other, ClassTime):
+            raise TypeError(
+                "item must be an instance of ClassTime"
+            )
+        first_half_time_list = [i for i in self.firstHalfTimeList if i in other.firstHalfTimeList]
+        second_half_time_list = [i for i in self.secondHalfTimeList if i in other.secondHalfTimeList]
+        return ClassTime(first_half_time_list, second_half_time_list)
+
     def __eq__(self, other):
         if not isinstance(other, ClassTime):
             raise TypeError(
