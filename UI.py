@@ -152,7 +152,7 @@ class CandidateTable(Canvas):
         :param master:
         :param classTable:
         """
-        super().__init__(master, width=800, height=800, bg='#F1F1F1')
+        super().__init__(master, width=800, height=720, bg='#F1F1F1')
         # 先获取有哪些课程
         courses = []
         for class_ in classTable.classes.copy():
@@ -218,10 +218,47 @@ class CandidateTable(Canvas):
         delta = args[0].delta/2
         if self.now_y_delta+delta > 0:
             delta = 0
-        if self.now_y_delta+delta < 800-self.max_y:
+        if self.now_y_delta+delta < 720-self.max_y:
             delta = 0
         self.now_y_delta += delta
         self.move("all", 0, delta)
+
+
+class ResultWindow(Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("课程表")
+
+        self.show_widget = ScheduleTable(self, class_table, 0)
+        self.show_widget.place(x=0, y=40, anchor=NW)
+        self.name_label = Label(self, text="春学期", font=('simHei', 20))
+        self.button_1 = Button(self, text="春学期", command=lambda: self.show(0))
+        self.button_2 = Button(self, text="夏学期", command=lambda: self.show(1))
+        self.button_3 = Button(self, text="志愿表", command=lambda: self.show(2))
+        self.name_label.place(x=780, y=0, height=40, anchor=NE)
+        self.button_1.place(x=0, y=0, width=80, height=40, anchor=NW)
+        self.button_2.place(x=85, y=0, width=80, height=40, anchor=NW)
+        self.button_3.place(x=170, y=0, width=80, height=40, anchor=NW)
+        self.geometry("780x600")
+
+    def show(self, code: int):
+        self.show_widget.destroy()
+        if code == 0:
+            self.show_widget = ScheduleTable(self, class_table, 0)
+            self.name_label.config(text="春学期")
+            self.geometry("780x600")
+            self.name_label.place(x=780, y=0, height=40, anchor=NE)
+        elif code == 1:
+            self.show_widget = ScheduleTable(self, class_table, 1)
+            self.name_label.config(text="夏学期")
+            self.geometry("780x600")
+            self.name_label.place(x=780, y=0, height=40, anchor=NE)
+        elif code == 2:
+            self.show_widget = CandidateTable(self, class_table)
+            self.name_label.config(text="志愿表")
+            self.geometry("800x760")
+            self.name_label.place(x=800, y=0, height=40, anchor=NE)
+        self.show_widget.place(x=0, y=40, anchor=NW)
 
 
 class Application(Tk):
@@ -386,25 +423,26 @@ class Application(Tk):
 
     def showResult(self):
         self.showButton.config(state=DISABLED)
-        root0 = Tk()
-        root0.iconbitmap("icon.ico")
-        root0.title("课程表")
-        Label(root0, text="春学期", font=('simHei', 20)).pack()
-        st0 = ScheduleTable(root0, class_table, 0)
-        st0.pack()
-
-        root1 = Tk()
-        root1.iconbitmap("icon.ico")
-        root1.title("课程表")
-        Label(root1, text="夏学期", font=('simHei', 20)).pack()
-        st1 = ScheduleTable(root1, class_table, 1)
-        st1.pack()
-
-        root2 = Tk()
-        root2.iconbitmap("icon.ico")
-        root2.title("志愿清单")
-        ct = CandidateTable(root2, class_table)
-        ct.pack()
+        ResultWindow()
+        # root0 = Tk()
+        # root0.iconbitmap("icon.ico")
+        # root0.title("课程表")
+        # Label(root0, text="春学期", font=('simHei', 20)).pack()
+        # st0 = ScheduleTable(root0, class_table, 0)
+        # st0.pack()
+        #
+        # root1 = Tk()
+        # root1.iconbitmap("icon.ico")
+        # root1.title("课程表")
+        # Label(root1, text="夏学期", font=('simHei', 20)).pack()
+        # st1 = ScheduleTable(root1, class_table, 1)
+        # st1.pack()
+        #
+        # root2 = Tk()
+        # root2.iconbitmap("icon.ico")
+        # root2.title("志愿清单")
+        # ct = CandidateTable(root2, class_table)
+        # ct.pack()
         self.showButton.config(state=NORMAL)
 
     def showAuthor(self):
