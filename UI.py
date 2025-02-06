@@ -224,9 +224,9 @@ class CandidateTable(Canvas):
         self.move("all", 0, delta)
 
 
-class ResultWindow(Tk):
-    def __init__(self):
-        super().__init__()
+class ResultWindow(Toplevel):
+    def __init__(self, master):
+        super().__init__(master)
         self.title("选课结果")
         self.iconbitmap("icon.ico")
         self.show_widget = ScheduleTable(self, class_table, 0)
@@ -426,7 +426,7 @@ class Application(Tk):
 
     def showResult(self):
         self.showButton.config(state=DISABLED)
-        ResultWindow()
+        ResultWindow(self)
         # root0 = Tk()
         # root0.iconbitmap("icon.ico")
         # root0.title("课程表")
