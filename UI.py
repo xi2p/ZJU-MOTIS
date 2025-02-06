@@ -451,8 +451,8 @@ class Application(Tk):
     def showAuthor(self):
         showinfo("关于MOTIS", """作者：xi2p
 版本：1.0.0
-Fork me on GITEE:
-https://gitee.com/xi2p/zju-motis
+Fork me on Github:
+https://github.com/xi2p/ZJU-MOTIS
 """)
 
     def destroy(self):

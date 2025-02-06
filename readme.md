@@ -1,7 +1,12 @@
 # MOTIS
 MOTIS: Multi-criteria Optimization Tool for Intelligent Scheduling
 
-![icon](https://gitee.com/xi2p/zju-motis/raw/master/icon.png)
+<div align=center><img width="256" height="256" src="https://gitee.com/xi2p/zju-motis/raw/master/icon.png"/></div>
+
+![python](https://img.shields.io/badge/python-3-blue)
+![contributors](https://img.shields.io/badge/contributors-1-orange)
+![release](https://img.shields.io/badge/release-v1.0.0-green)
+![license](https://img.shields.io/badge/license-MIT-blue)
 
 
 ## 简介
