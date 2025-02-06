@@ -55,8 +55,6 @@ def getCourseFromCourseCode(courseCode: str) -> Course.Course:
     :return: 课程信息(courseCode, courseName, credit, courseType: CourseType, academy, status)
     """
 
-    ambiguous = False  # 是否有多个课程匹配。这是异常情况。
-    target: Union[Course.Course, None] = None
     for course in course_object_pool:
         if Course.Course.isEqualCourseCode(courseCode, course.courseCode):
             return course
@@ -205,6 +203,7 @@ def loadClassData():
         if class_["sxbj"] == "1":
             confirmed_class_code_set.append(class_["xkkh"])
             try:
+                # 标记课程状态为已选
                 getCourseFromCourseCode(class_["t_kcdm"]).status = Constants.CourseStatus.SELECTED
             except ValueError:
                 pass    # 已经选上的课，在courses.json中找不到对应的课程。例如形势与政策I，秋学期选的，春学期找不到。
@@ -271,7 +270,7 @@ def initClassTable(classTable: ClassTable.ClassTable):
     """
     for class_data in network.getChosenClasses():
         classes = filterClassSetByCondition(
-            lambda x: x.classCode == class_data["xkkh"]
+            lambda x: (x.classCode == class_data["xkkh"] and x.status == Constants.ClassStatus.CONFIRMED)
         )
         if len(classes) != 0:
             classTable.append(
