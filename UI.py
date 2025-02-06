@@ -286,7 +286,7 @@ class Application(Tk):
 
         self.accountLabel = Label(self, text="学号:", font=('Consolas', 16))
         self.passwordLabel = Label(self, text="密码:", font=('Consolas', 16))
-        self.accountEntry = Entry(self)
+        self.accountEntry = Entry(self, show="*")
         self.passwordEntry = Entry(self, show="*")
         self.loginButton = Button(self, text="登录", command=self.login)
         self.loginStatusLabel = Label(self, text="未登录", fg="red")
