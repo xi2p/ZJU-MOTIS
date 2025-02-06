@@ -1,7 +1,7 @@
 # MOTIS
 MOTIS: Multi-criteria Optimization Tool for Intelligent Scheduling
 
-<div align=center><img width="256" height="256" src="https://gitee.com/xi2p/zju-motis/raw/master/icon.png"/></div>
+<div align=center><img width="256" height="256" src="https://github.com/xi2p/ZJU-MOTIS/blob/master/icon.png?raw=true"/></div>
 
 ![python](https://img.shields.io/badge/python-3-blue)
 ![contributors](https://img.shields.io/badge/contributors-1-orange)
@@ -488,7 +488,7 @@ pip install -r requirements.txt
 
 先看一张效果图：
 
-![AI](https://gitee.com/xi2p/zju-motis/raw/master/AI.png)
+![AI](https://github.com/xi2p/ZJU-MOTIS/blob/master/AI.png?raw=true)
 
 如果你不会写代码或者没看懂我的文档，没关系。
 
