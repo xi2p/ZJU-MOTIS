@@ -4,7 +4,7 @@
 ##############################################
 """
 import builtins
-import keyword
+from . import highlightKw
 import re
 import time
 import interface
@@ -20,14 +20,14 @@ def any(name, alternates):
 
 
 def make_pat():
-    kw = r"\b" + any("KEYWORD", keyword.kwlist) + r"\b"
+    kw = r"\b" + any("KEYWORD", highlightKw.kwlist) + r"\b"
     match_softkw = (
         r"^[ \t]*" +  # at beginning of line + possible indentation
         r"(?P<MATCH_SOFTKW>match)\b" +
         r"(?![ \t]*(?:" + "|".join([  # not followed by ...
             r"[:,;=^&|@~)\]}]",  # a character which means it can't be a
                                  # pattern-matching statement
-            r"\b(?:" + r"|".join(keyword.kwlist) + r")\b",  # a keyword
+            r"\b(?:" + r"|".join(highlightKw.kwlist) + r")\b",  # a keyword
         ]) +
         r"))"
     )
@@ -43,13 +43,13 @@ def make_pat():
             r"_\b",  # a lone underscore
             r"[:,;=^&|@~)\]}]",  # a character which means it can't be a
                                  # pattern-matching case
-            r"\b(?:" + r"|".join(keyword.kwlist) + r")\b",  # a keyword
+            r"\b(?:" + r"|".join(highlightKw.kwlist) + r")\b",  # a keyword
         ]) +
         r"))"
     )
     builtinlist = [str(name) for name in dir(builtins)
                    if not name.startswith('_') and
-                   name not in keyword.kwlist]
+                   name not in highlightKw.kwlist]
     builtinlist.extend(interface.interface_list)
     builtin = r"([^'\"\\#]\b|^)" + any("BUILTIN", builtinlist) + r"\b"
     comment = any("COMMENT", [r"#[^\n]*"])

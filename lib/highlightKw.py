@@ -12,7 +12,7 @@ the python source tree and run:
     PYTHONPATH=Tools/peg_generator python3 -m pegen.keywordgen \
         Grammar/python.gram \
         Grammar/Tokens \
-        Lib/keyword.py
+        Lib/highlightKw.py
 
 Alternatively, you can run 'make regen-keyword'.
 """
