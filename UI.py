@@ -9,7 +9,7 @@ from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
 import network
 import threading
-from data import loadCourseData, loadClassData, initClassTable, course_data
+from data import loadCourseData, loadClassData, initClassTable, course_data, filterClassSetByCondition
 
 
 # def CodeConfirmBox(code: str):
@@ -102,6 +102,9 @@ class ScheduleTable(Canvas):
             last_course_name = ''
             start_time = 0
             last_class = None
+            last_duality = False
+            # 这里有两种情况，一种是这个课程的志愿里只有选上或者没选上的班，另一种是这个课程的志愿里两者都有
+            # 如果是第二种情况，这一个单元格里既要显示蓝色的字，又要显示黑色的字
             for time in range(1, 15):
                 if self.half == 0:
                     class_time = ClassTime([(weekday, time)], [])
@@ -109,13 +112,30 @@ class ScheduleTable(Canvas):
                     class_time = ClassTime([], [(weekday, time)])
                 course_name = ''
                 class_now = None
+
                 for class_ in self.classTable.classes:
                     if class_.classTime.isOverlapped(class_time):
                         course_name = class_.course.courseName
                         class_now = class_
                         break
 
-                if last_course_name != course_name or course_name == '':
+                # 判断双重性
+                confirmed_classes = filterClassSetByCondition(
+                    lambda x: x.status == ClassStatus.CONFIRMED
+                              and x.course.courseName == course_name
+                              and x.classTime.isOverlapped(class_time)
+                )
+                unfiltered_classes = filterClassSetByCondition(
+                    lambda x: x.course.courseName == course_name
+                              and x.status != ClassStatus.CONFIRMED
+                              and x.classTime.isOverlapped(class_time)
+                )
+                if confirmed_classes and unfiltered_classes:
+                    duality = True
+                else:
+                    duality = False
+
+                if last_course_name != course_name or course_name == '' or duality != last_duality:
                     # 画上上一个课程的名字
                     self.create_line(
                         80 + 100*weekday - 100, 40*start_time, 80 + 100*weekday, 40*start_time,
@@ -123,26 +143,52 @@ class ScheduleTable(Canvas):
                     )
                     # self.create_text(80 + 100*weekday - 50, (start_time+time)*10, text=last_course_name)
                     if last_course_name:
-                        pixel_length = 0
-                        font = 12
-                        for ch in last_course_name:
-                            if ord(ch) < 128:
-                                pixel_length += font
+                        if not last_duality:
+                            pixel_length = 0
+                            font = 12
+                            for ch in last_course_name:
+                                if ord(ch) < 128:
+                                    pixel_length += font
+                                else:
+                                    pixel_length += font * 2
+                            if pixel_length > 90 * (time - start_time) * 2:
+                                font = int(90 * (time - start_time) * 2 / pixel_length * font)
+                            # 课程的志愿里只有选上或者没选上的班一种
+                            if last_course_name is not None and last_class.status == ClassStatus.CONFIRMED:
+                                fg = "black"
                             else:
-                                pixel_length += font * 2
-                        if pixel_length > 90*(time-start_time)*2:
-                            font = int(90*(time-start_time)*2/pixel_length*font)
-                        if last_course_name is not None and last_class.course.status == CourseStatus.SELECTED:
-                            fg = "black"
+                                fg = "blue"
+                            self.create_window(80 + 100*weekday - 50, (start_time+time)*20,
+                                               window=Label(self.master, text=last_course_name, fg=fg, bg="#F1F1F1", font=('simHei', font), wraplength=90),
+                                               anchor=CENTER, width=90, height=40*(time-start_time)-2,
+                                               tags="fill")
                         else:
-                            fg = "blue"
-                        self.create_window(80 + 100*weekday - 50, (start_time+time)*20,
-                                           window=Label(self.master, text=last_course_name, fg=fg, bg="#F1F1F1", font=('simHei', font), wraplength=90),
-                                           anchor=CENTER, width=90, height=40*(time-start_time)-2,
-                                           tags="fill")
+                            pixel_length = 0
+                            font = 12
+                            for ch in last_course_name:
+                                if ord(ch) < 128:
+                                    pixel_length += font
+                                else:
+                                    pixel_length += font * 2
+                            if pixel_length > 90 * (time - start_time):
+                                font = int(90 * (time - start_time) / pixel_length * font)
+                            self.create_window(80 + 100 * weekday - 50, (start_time * 20 + time * 20) - 10*(time - start_time),
+                                               window=Label(self.master, text=last_course_name, fg="black",
+                                                            bg="#F1F1F1",
+                                                            font=('simHei', font), wraplength=90),
+                                               anchor=CENTER, width=90, height=20 * (time - start_time) - 2,
+                                               tags="fill")
+                            self.create_window(80 + 100 * weekday - 50, (start_time * 20 + time * 20) + 10*(time - start_time),
+                                               window=Label(self.master, text=last_course_name, fg="blue",
+                                                            bg="#F1F1F1",
+                                                            font=('simHei', font), wraplength=90),
+                                               anchor=CENTER, width=90, height=20 * (time - start_time) - 2,
+                                               tags="fill")
                     last_course_name = course_name
                     last_class = class_now
+                    last_duality = duality
                     start_time = time
+
 
 
 class CandidateTable(Canvas):
@@ -188,11 +234,6 @@ class CandidateTable(Canvas):
                                  font=('simHei', 16),
                                  fill="blue" if class_.status==ClassStatus.CONFIRMED else "red",
                                  anchor=CENTER)
-                # self.create_text(x+100, y+80+i*60+30,
-                #                  text="已选上" if class_.course.status==1 else "待筛选",
-                #                  font=('simHei', 16),
-                #                  fill="blue" if class_.course.status==1 else "red",
-                #                  anchor=CENTER)
                 # 教师姓名
                 self.create_text(x+220, y+80+i*60+30, text="\n".join(class_.teacherNames), font=('simHei', 10), fill="black", anchor=CENTER)
                 # 学期
