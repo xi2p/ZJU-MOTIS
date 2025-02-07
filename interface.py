@@ -140,7 +140,6 @@ interface_list = [
     "SecondHalfSemester",
     # 类
     "ClassTime",
-    "Strategy",
     # 函数
     "append",
     "withPriority",
