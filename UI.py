@@ -3,7 +3,7 @@ from tkinter import *
 from tkinter.ttk import Button, Entry
 from tkinter.scrolledtext import ScrolledText
 from tkinter.messagebox import showinfo, showerror
-import idlelib.colorizer as idc
+from lib import colorizer as idc
 import idlelib.percolator as idp
 from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
