@@ -7,12 +7,57 @@ import builtins
 from . import highlightKw
 import re
 import time
-import interface
 from idlelib.config import idleConf
 from idlelib.delegator import Delegator
 
 DEBUG = False
 
+interface_list = [
+    # 常量
+    "First",
+    "Second",
+    "Third",
+    "Fourth",
+    "Fifth",
+    "Sixth",
+    "Seventh",
+    "Eighth",
+    "Ninth",
+    "Tenth",
+    "Eleventh",
+    "Twelfth",
+    "Thirteenth",
+    "MorningEight",
+    "Morning",
+    "Afternoon",
+    "Night",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+    "FirstHalfSemester",
+    "SecondHalfSemester",
+    # 类
+    "ClassTime",
+    # 函数
+    "append",
+    "withPriority",
+    "withStrategy",
+    "onlyChooseFromTheseTeachers",
+    "preferredTeacher",
+    "goodTeacher",
+    "normalTeacher",
+    "badTeacher",
+    "avoidTeacher",
+    "expectClassAt",
+    "avoidClassAt",
+    "withTeacherFactor",
+    "withTimeFactor",
+    "withPossibilityFactor",
+]
 
 def any(name, alternates):
     "Return a named group pattern matching list of alternates."
@@ -50,7 +95,7 @@ def make_pat():
     builtinlist = [str(name) for name in dir(builtins)
                    if not name.startswith('_') and
                    name not in highlightKw.kwlist]
-    builtinlist.extend(interface.interface_list)
+    builtinlist.extend(interface_list)
     builtin = r"([^'\"\\#]\b|^)" + any("BUILTIN", builtinlist) + r"\b"
     comment = any("COMMENT", [r"#[^\n]*"])
     stringprefix = r"(?i:r|u|f|fr|rf|b|br|rb)?"
