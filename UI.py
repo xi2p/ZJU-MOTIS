@@ -51,7 +51,7 @@ class ProgressBar(Canvas):
             index = (index + 1) % self.frameNum
 
             if self.progress != self.doubleVar.get() or self.text != self.stringVar.get():
-                self.create_rectangle(10 + (self.width - 20) * self.progress, 8,
+                self.create_rectangle(10, 8,
                                       10 + (self.width - 20) * self.doubleVar.get(), 11, fill='#14A8DD',
                                       outline='#14A8DD', tags='progress')
                 self.progress = self.doubleVar.get()
