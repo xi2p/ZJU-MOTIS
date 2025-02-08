@@ -87,9 +87,10 @@ def getChosenClasses():
     return chosenClasses
 
 
-def updateCoursesJson():
+def updateCoursesJson(doubleVar):
     """
     更新courses.json文件
+    :param doubleVar: DoubleVar对象。用于显示进度条
     """
     courses = []
     codes = []
@@ -117,19 +118,29 @@ def updateCoursesJson():
                 courses.append(course)
 
     _updateCourseJson("xk_b", "全部课程")
+    doubleVar.set(0.2)
+
     _updateCourseJson("xk_n", "全部课程")
+    doubleVar.set(0.4)
+
     _updateCourseJson("xk_8", "体育课程")
+    doubleVar.set(0.6)
+
     _updateCourseJson("xk_zyjckc", "专业基础课程")
+    doubleVar.set(0.8)
+
     _updateCourseJson("zy_qb", "所有类（专业）")
+    doubleVar.set(1.0)
 
     with open("courses.json", "w", encoding="UTF-8") as f:
         json.dump(courses, f, ensure_ascii=False)
 
 
-def updateClassJson(wishList: WishList):
+def updateClassJson(wishList: WishList, doubleVar):
     """
     更新classes.json文件
     :param wishList: wishList对象。本方法只会获取wishList中的课程，以减少网络请求时间。
+    :param doubleVar: DoubleVar对象。用于显示进度条
     """
     url = f"http://zdbk.zju.edu.cn/jwglxt/xsxk/zzxkghb_cxZzxkGhbJxbList.html?gnmkdm={GNMKDM}&su={username}"
     with open("courses.json", "r", encoding="UTF-8") as f:
@@ -138,6 +149,7 @@ def updateClassJson(wishList: WishList):
     courseCodeContained = []
     details = []
     for wish in wishList.wishes:
+        doubleVar.set(wishList.wishes.index(wish) / len(wishList.wishes) / 2)
         for course in course_data:
             if Course.isEqualCourseCode(course["kcdm"], wish.courseCode):
                 courseCodeContained.append(course["kcdm"])
@@ -153,6 +165,7 @@ def updateClassJson(wishList: WishList):
                 details.append(response.json())
                 break
     for class_ in getChosenClasses():
+        doubleVar.set(0.5 + getChosenClasses().index(class_) / len(getChosenClasses()) / 2)
         if class_["t_kcdm"] not in courseCodeContained:
             # class和course的xkkh不一样
             for course in course_data:
@@ -172,62 +185,6 @@ def updateClassJson(wishList: WishList):
             else:
                 # 已经选上的课，在courses.json中找不到对应的课程。例如形势与政策I，秋学期选的，春学期找不到。
                 ...
-                # details.append([
-                #     {
-                #         "brs": "-1",
-                #         "completeAnswer": True,
-                #         "gjhkc": "否",
-                #         "grs": "-1",
-                #         "jcmc": "<未能获取数据>",
-                #         "jgpxzd": "1",
-                #         "jsxm": class_["jsxm"],
-                #         "jszgh": class_["jszgh"],
-                #         "jxfs": "--",
-                #         "kssj": class_["vkssj"],
-                #         "listnav": "false",
-                #         "localeKey": "zh_CN",
-                #         "mxdx": "<未能获取数据>",
-                #         "pageable": True,
-                #         "queryModel": {
-                #             "currentPage": 1,
-                #             "currentResult": 0,
-                #             "entityOrField": False,
-                #             "limit": 15,
-                #             "offset": 0,
-                #             "pageNo": 0,
-                #             "pageSize": 15,
-                #             "showCount": 10,
-                #             "sorts": [],
-                #             "totalCount": 0,
-                #             "totalPage": 0,
-                #             "totalResult": 0
-                #         },
-                #         "rangeable": True,
-                #         "rs": "0/0",
-                #         "sfxz": "1",
-                #         "skdd": class_["skdd"],
-                #         "sksj": class_["sksj"],
-                #         "skxs": "<未能获取数据>",
-                #         "t_xxq": class_["t_xxq"],
-                #         "tabname": class_["tabname"],
-                #         "totalResult": "0",
-                #         "userModel": {
-                #             "monitor": False,
-                #             "roleCount": 0,
-                #             "roleKeys": "",
-                #             "roleValues": "",
-                #             "status": 0,
-                #             "usable": False
-                #         },
-                #         "vsksj": class_["vsksj"],
-                #         "vxxq": class_["vxxq"],
-                #         "xkkh": class_["xkkh"],
-                #         "xkzy": class_["xkzy"],
-                #         "xxq": class_["xxq"],
-                #         "yxrs": "0~0",
-                #         "zxs": class_["zxs"]
-                #     }
-                # ])
 
 
 

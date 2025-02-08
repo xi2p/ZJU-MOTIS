@@ -176,6 +176,10 @@ def getExamTimeListFromString(time: str) -> List[Time.ExamTime]:
 
 
 def loadCourseData():
+    """
+    从本地json文件中加载课程数据
+    :return:
+    """
     courseData.clear()
     if os.path.exists("courses.json"):
         with open("courses.json", "r", encoding="utf-8") as f:
@@ -192,7 +196,11 @@ allClassSet = []
 5. 接下来调用loadClassData()，加载班级数据。这个过程中需要正确填充status属性。之后就可以获取班级对象了。
 6. 将已选的课程对象插入classTable中，然后开始正式执行选课算法。
 """
-def loadClassData():
+def loadClassData(doubleVar):
+    """
+    从本地json文件中加载班级数据
+    :param doubleVar: 用于显示进度条
+    """
     classData.clear()
     with open("classes.json", "r", encoding="utf-8") as f:
         classData.extend(json.load(f))
@@ -211,7 +219,9 @@ def loadClassData():
             toBeFilteredClassCodeSet.append(class_["xkkh"])
 
     allClassSet.clear()
-    for course in classData:
+    total = len(classData)
+    for i, course in enumerate(classData):
+        doubleVar.set(i / total)
         for class_ in course:
             try:
                 if class_["xkkh"] in confirmedClassCodeSet:

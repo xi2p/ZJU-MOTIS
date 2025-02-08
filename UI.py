@@ -9,54 +9,78 @@ from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
 import network
 import threading
+import time
 from data import loadCourseData, loadClassData, initClassTable, courseData, filterClassSetByCondition
 
 
-# def CodeConfirmBox(code: str):
-#     class _CodeConfirmWindow(Tk):
-#         def __init__(self):
-#             super().__init__()
-#             self.title("请确认要执行的代码")
-#             self.geometry('800x600')
-#             self.iconbitmap("icon.ico")
-#             textPad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 16))
-#             # textPad.pack(fill=BOTH, expand=1)
-#             textPad.focus_set()
-#             idc.color_config(textPad)
-#             textPad.focus_set()
-#             textPad.config(bg='#002240', fg='white')
-#             textPad.insert(INSERT, code)
-#             p = idp.Percolator(textPad)
-#             d = idc.ColorDelegator()
-#             p.insertfilter(d)
-#             buttonConfirm = Button(self, text="确认", command=self.confirm, font=('Consolas', 16), anchor=CENTER)
-#             buttonCancel = Button(self, text="取消", command=self.cancel, font=('Consolas', 16), anchor=CENTER)
-#             textPad.place(x=0, y=0, width=800, height=560, anchor=NW)
-#             buttonConfirm.place(x=250, y=560, width=80, height=40, anchor=NE)
-#             buttonCancel.place(x=550, y=560, width=80, height=40, anchor=NW)
-#             textPad.config(state=DISABLED)
-#
-#             self.confirmStatus = None
-#
-#         def confirm(self):
-#             self.confirmStatus = True
-#             self.destroy()
-#
-#         def cancel(self):
-#             self.confirmStatus = False
-#             self.destroy()
-#
-#         def destroy(self):
-#             if self.confirmStatus is None:
-#                 self.confirmStatus = False
-#             super().destroy()
-#
-#     window = _CodeConfirmWindow()
-#     while True:
-#         window.update()
-#         if window.confirmStatus is not None:
-#             break
-#     return window.confirmStatus
+class ProgressBar(Canvas):
+    def __init__(self, master, doubleVar: DoubleVar, stringVar: StringVar, width=600):
+        super().__init__(master, width=width, height=40)
+        self.progress = 0
+        self.text = ''
+
+        self.width = width
+        self.height = 40
+
+        self.doubleVar = doubleVar
+        self.stringVar = stringVar
+
+        self.frameNum = 60
+        self.frames = [PhotoImage(file='./loading.gif', format='gif -index %i' % i) for i in range(self.frameNum)]
+
+        self['bg'] = 'white'
+
+        self.create_rectangle(8, 6, self.width - 8, 13, fill='white', outline='#14A8DD', tags='progress')
+        self.create_text(30, 18, text=self.text + f'[{round(self.progress * 100)}%]', fill='#202020', anchor=NW,
+                         tags='text')
+
+        self.destroyed = False
+        self.threadRunning = True
+        thread = threading.Thread(target=self.updateImage)
+        thread.daemon = True
+        thread.start()
+
+    def updateImage(self):
+        index = 0
+        while not self.destroyed:
+            if index == 0:
+                self.delete('gif')
+            self.create_image(
+                8, 18, image=self.frames[index], anchor=NW, tags='gif'
+            )
+            index = (index + 1) % self.frameNum
+
+            if self.progress != self.doubleVar.get() or self.text != self.stringVar.get():
+                self.create_rectangle(10 + (self.width - 20) * self.progress, 8,
+                                      10 + (self.width - 20) * self.doubleVar.get(), 11, fill='#14A8DD',
+                                      outline='#14A8DD', tags='progress')
+                self.progress = self.doubleVar.get()
+                self.text = self.stringVar.get()
+                self.itemconfigure('text', text=self.text+f'[{round(self.progress * 100)}%]')
+
+
+                self.update()
+
+            time.sleep(0.06)
+        self.threadRunning = False
+
+    def reset(self):
+        self.delete(ALL)
+        self.create_rectangle(8, 6, self.width - 8, 13, fill='white', outline='#14A8DD', tags='progress')
+        self.create_text(30, 18, text=self.text + f'[{round(self.progress * 100)}%]', fill='#202020', anchor=NW,
+                         tags='text')
+        self.destroyed = True
+        while self.threadRunning:
+            time.sleep(0.01)
+        self.destroyed = False
+        self.threadRunning = True
+        thread = threading.Thread(target=self.updateImage)
+        thread.daemon = True
+        thread.start()
+
+    def destroy(self):
+        self.destroyed = True
+        super().destroy()
 
 
 class ScheduleTable(Canvas):
@@ -351,6 +375,10 @@ class Application(Tk):
         self.showButton.place(x=600, y=520, width=200, height=40, anchor=NW)
         self.authorButton.place(x=600, y=560, width=200, height=40, anchor=NW)
 
+        self.progressBar = None
+        self.doubleVar = DoubleVar()
+        self.stringVar = StringVar()
+
     def _login(self):
         username = self.accountEntry.get()
         password = self.passwordEntry.get()
@@ -389,8 +417,13 @@ class Application(Tk):
         self.selectButton.config(state=DISABLED)
         self.updateButton.config(text="正在更新课程数据...")
 
+
         try:
-            network.updateCoursesJson()
+            self.enableProgress()
+            self.stringVar.set("下载课程档案...")
+            network.updateCoursesJson(self.doubleVar)
+            self.resetProgress()
+            self.stringVar.set("载入课程档案...")
             loadCourseData()
             showinfo("更新成功", "课程数据更新成功")
         except Exception as e:
@@ -399,6 +432,7 @@ class Application(Tk):
         self.updateButton.config(state=NORMAL)
         self.selectButton.config(state=NORMAL)
         self.updateButton.config(text="更新课程数据")
+        self.disableProgress()
 
     def updateCourse(self):
         thread = threading.Thread(target=self._updateCourse)
@@ -412,11 +446,22 @@ class Application(Tk):
         self.selectButton.config(text="正在选课...")
 
         try:
+            self.enableProgress()
             exec(self.codePad.get(1.0, END))
-            network.updateClassJson(wishList)
-            loadClassData()
+
+            self.stringVar.set("下载班级档案...")
+            network.updateClassJson(wishList, self.doubleVar)
+            self.resetProgress()
+
+            self.stringVar.set("载入班级档案...")
+            loadClassData(self.doubleVar)
             initClassTable(classTable)
-            selectClass(classTable, wishList)
+            self.resetProgress()
+
+            self.stringVar.set("自动选课中...")
+            selectClass(classTable, wishList, doubleVar=self.doubleVar)
+
+            time.sleep(0.1)
             showinfo("选课完毕", "选课完毕")
             self.selectButton.config(text="自动选课完毕")
 
@@ -427,6 +472,7 @@ class Application(Tk):
             self.selectButton.config(text="开始自动选课")
         self.showButton.config(state=NORMAL)
         self.selectStatus = False
+        self.disableProgress()
 
 
     def selectCourse(self):
@@ -435,58 +481,10 @@ class Application(Tk):
         thread.daemon = True
         thread.start()
 
-        # # root0 = Tk()
-        # # root0.title("课程表")
-        # # Label(root0, text="春学期", font=('simHei', 20)).pack()
-        # # st0 = ScheduleTable(root0, class_table, 0)
-        # # st0.pack()
-        # #
-        # # root1 = Tk()
-        # # root1.title("课程表")
-        # # Label(root1, text="夏学期", font=('simHei', 20)).pack()
-        # # st1 = ScheduleTable(root1, class_table, 1)
-        # # st1.pack()
-        #
-        # while self.selectStatus:
-        #     # st0.fill()
-        #     # st1.fill()
-        #     # st0.update()
-        #     # st1.update()
-        #     # root0.update()
-        #     # root1.update()
-        #     self.update()
-        #
-        # # st0.fill()
-        # # st1.fill()
-        # # root2 = Tk()
-        # # root2.title("志愿清单")
-        # # ct = CandidateTable(root2, class_table)
-        # # ct.pack()
-        # self.showResult()
-
 
     def showResult(self):
         self.showButton.config(state=DISABLED)
         ResultWindow(self)
-        # root0 = Tk()
-        # root0.iconbitmap("icon.ico")
-        # root0.title("课程表")
-        # Label(root0, text="春学期", font=('simHei', 20)).pack()
-        # st0 = ScheduleTable(root0, class_table, 0)
-        # st0.pack()
-        #
-        # root1 = Tk()
-        # root1.iconbitmap("icon.ico")
-        # root1.title("课程表")
-        # Label(root1, text="夏学期", font=('simHei', 20)).pack()
-        # st1 = ScheduleTable(root1, class_table, 1)
-        # st1.pack()
-        #
-        # root2 = Tk()
-        # root2.iconbitmap("icon.ico")
-        # root2.title("志愿清单")
-        # ct = CandidateTable(root2, class_table)
-        # ct.pack()
         self.showButton.config(state=NORMAL)
 
     def showAuthor(self):
@@ -495,6 +493,21 @@ class Application(Tk):
 Fork me on Github:
 https://github.com/xi2p/ZJU-MOTIS
 """)
+
+    def enableProgress(self):
+        self.progressBar = ProgressBar(self, self.doubleVar, self.stringVar, width=580)
+        self.doubleVar.set(0)
+        self.stringVar.set("")
+        self.progressBar.place(x=0, y=560)
+
+    def resetProgress(self):
+        self.doubleVar.set(0)
+        self.stringVar.set("")
+        self.progressBar.reset()
+
+    def disableProgress(self):
+        self.progressBar.destroy()
+        self.progressBar = None
 
     def destroy(self):
         super().destroy()

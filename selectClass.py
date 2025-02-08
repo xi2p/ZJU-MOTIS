@@ -400,11 +400,12 @@ def rateListCmp(a: List[float | None], b: List[float | None]) -> int:
     return 0
 
 
-def selectClass(classTable: ClassTable, wishList: WishList) -> ClassTable:
+def selectClass(classTable: ClassTable, wishList: WishList, doubleVar) -> ClassTable:
     """
     选课算法。调用这个函数的时候，所有数据应该都已经加载好了。
     :param classTable: 课程表对象
     :param wishList: 愿望列表对象
+    :param doubleVar: 用于显示进度条
     :return: 选课结果。选课结果也会直接写入classTable对象。
     """
 
@@ -505,7 +506,9 @@ def selectClass(classTable: ClassTable, wishList: WishList) -> ClassTable:
         _select(_priority, index + 1)  # 不选这门课程也要尝试/不做更改也要尝试
 
     # 逐优先级开始递归调用_select，选出这个优先级下的最优课表
-    for priority in range(wishList.maxPriority, -1, -1):
+    for i, priority in enumerate(sorted(list(priorityGroup.keys()), reverse=True)):
         _select(priority, 0)
         bestClassTable.copyTo(classTable)  # 保存这一个优先级的最优课表。下一个优先级的课程要在这个基硃上继续选课
+        doubleVar.set(i / len(priorityGroup.keys()))
+    doubleVar.set(1)
     return classTable

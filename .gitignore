@@ -9,3 +9,4 @@ courses.json
 /dist
 /build
 *.spec
+test.py
