@@ -275,7 +275,7 @@ class CandidateTable(Canvas):
             y += 80+len(classes)*60+40
 
         # 通过滑动条滚动，展示所有内容
-        self.maxY = y
+        self.maxY = y + 80
         self.nowYDelta = 0
         self.bind("<MouseWheel>", self.onMouseWheel)
 
@@ -289,6 +289,80 @@ class CandidateTable(Canvas):
         self.move("all", 0, delta)
 
 
+class DifferenceTable(Canvas):
+    def __init__(self, master):
+        """
+        展示选课算法对课表产生的差异
+        依次展示以下内容：
+        1. 成功选上的未选课程
+        2. 成功优化的已选课程
+        3. 未选上的课程
+        4. 未优化的已选课程
+        """
+        super().__init__(master, width=800, height=720, bg='#F1F1F1')
+        successSelected = []
+        successOptimized = []
+        failedSelected = []
+        failedOptimized = []
+        for wish in wishList.wishes:
+            if wish.status == CourseStatus.NOT_SELECTED:
+                if filterClassSetByCondition(lambda x: x.course == wish, classTable.classes):
+                    successSelected.append(wish)
+                else:
+                    failedSelected.append(wish)
+            else:
+                if filterClassSetByCondition(lambda x: x.course == wish and x.status != ClassStatus.CONFIRMED,
+                                             classTable.classes):
+                    successOptimized.append(wish)
+                else:
+                    failedOptimized.append(wish)
+        y = 10
+        for course in successSelected + successOptimized + failedSelected + failedOptimized:
+            self.drawCourse(y, course)
+            y += 80
+        # 通过滑动条滚动，展示所有内容
+        self.maxY = y + 80
+        self.nowYDelta = 0
+        self.bind("<MouseWheel>", self.onMouseWheel)
+
+    def drawCourse(self, y: int, course: Course):
+        """
+        画出一门课程的信息
+        :param y: 这一课程块的y坐标
+        :param course: 课程对象
+        """
+        x = 10
+        self.create_rectangle(x, y, 800 - x, y + 60, fill='white', outline="white")
+        self.create_text(x + 10, y + 20, text="课程代码：" + course.courseCode, font=('simHei', 12), fill="blue", anchor=W)
+        self.create_text(x + 10, y + 40, text="课程名称：" + course.courseName, font=('simHei', 12), fill="blue", anchor=W)
+        if course.status == CourseStatus.NOT_SELECTED:
+            if filterClassSetByCondition(lambda x: x.course == course, classTable.classes):
+                text = "成功选择"
+                color = "green"
+            else:
+                text = "未能选择"
+                color = "red"
+        else:
+            if filterClassSetByCondition(lambda x: x.course == course and x.status != ClassStatus.CONFIRMED, classTable.classes):
+                text = "成功优化"
+                color = "green"
+            else:
+                text = "未优化"
+                color = "gray"
+        self.create_text(800-x-10, y+30, text=text, font=('simHei', 24), fill=color, anchor=E)
+
+    def onMouseWheel(self, *args):
+        delta = args[0].delta/2
+        if self.nowYDelta+delta > 0:
+            delta = 0
+        if self.nowYDelta+delta < 720-self.maxY:
+            delta = 0
+        self.nowYDelta += delta
+        self.move("all", 0, delta)
+
+
+
+
 class ResultWindow(Toplevel):
     def __init__(self, master):
         super().__init__(master)
@@ -300,10 +374,12 @@ class ResultWindow(Toplevel):
         self.button1 = Button(self, text="春学期", command=lambda: self.show(0))
         self.button2 = Button(self, text="夏学期", command=lambda: self.show(1))
         self.button3 = Button(self, text="志愿表", command=lambda: self.show(2))
+        self.button4 = Button(self, text="细节表", command=lambda: self.show(3))
         self.nameLabel.place(x=780, y=0, height=40, anchor=NE)
         self.button1.place(x=0, y=0, width=80, height=40, anchor=NW)
         self.button2.place(x=85, y=0, width=80, height=40, anchor=NW)
         self.button3.place(x=170, y=0, width=80, height=40, anchor=NW)
+        self.button4.place(x=255, y=0, width=80, height=40, anchor=NW)
         self.geometry("780x600")
 
     def show(self, code: int):
@@ -321,6 +397,11 @@ class ResultWindow(Toplevel):
         elif code == 2:
             self.showWidget = CandidateTable(self, classTable)
             self.nameLabel.config(text="志愿表")
+            self.geometry("800x760")
+            self.nameLabel.place(x=800, y=0, height=40, anchor=NE)
+        elif code == 3:
+            self.showWidget = DifferenceTable(self)
+            self.nameLabel.config(text="细节表")
             self.geometry("800x760")
             self.nameLabel.place(x=800, y=0, height=40, anchor=NE)
         self.showWidget.place(x=0, y=40, anchor=NW)
