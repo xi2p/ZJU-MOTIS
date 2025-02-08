@@ -69,8 +69,8 @@ class Course:
         self.priority = priority
         return self
 
-    def withStrategy(self, strategy: Strategy):
-        self.strategy = strategy
+    def withStrategy(self, *, hot: int, normal: int, cold: int):
+        self.strategy = Strategy(hot, normal, cold)
         return self
 
     def onlyChooseFromTheseTeachers(self, *teacherName):

@@ -25,12 +25,12 @@ session = r.session()
 username = ""
 password = ""
 
-chosen_classes = None
+chosenClasses = None
 
-def encrypt(public_exponent, modulus, password):
-    password_int = int.from_bytes(bytes(password, 'ascii'), 'big')
-    result_int = pow(password_int, int(public_exponent, 16), int(modulus, 16))
-    return hex(result_int)[2:].rjust(128, '0')
+def encrypt(publicExponent, modulus, password):
+    passwordInt = int.from_bytes(bytes(password, 'ascii'), 'big')
+    resultInt = pow(passwordInt, int(publicExponent, 16), int(modulus, 16))
+    return hex(resultInt)[2:].rjust(128, '0')
 
 
 def loginZDBK() -> bool:
@@ -50,14 +50,14 @@ def loginZDBK() -> bool:
     modulus = re.findall(r"\"modulus\":\"(.*?)\"", response.text)[0]
     exponent = re.findall(r"\"exponent\":\"(.*?)\"", response.text)[0]
 
-    encrypted_password = encrypt(exponent, modulus, password)
+    encryptedPassword = encrypt(exponent, modulus, password)
 
     response = session.post(
         "http://zjuam.zju.edu.cn/cas/login?service=http%3A%2F%2Fzdbk.zju.edu.cn%2Fjwglxt%2Fxtgl%2Flogin_ssologin.html",
         headers=headers,
         data={
             "username": username,
-            "password": encrypted_password,
+            "password": encryptedPassword,
             "execution": execution,
             "_eventId": "submit",
         }
@@ -72,9 +72,9 @@ def getChosenClasses():
     获取已选课程
     :return: json格式的已选课程
     """
-    global chosen_classes
-    if chosen_classes is not None:
-        return chosen_classes
+    global chosenClasses
+    if chosenClasses is not None:
+        return chosenClasses
     response = session.post(
         f"http://zdbk.zju.edu.cn/jwglxt/xsxk/zzxkghb_cxZzxkGhbChoosed.html?gnmkdm={GNMKDM}&su={username}",
         data={
@@ -83,13 +83,14 @@ def getChosenClasses():
         },
         headers=headers
     )
-    chosen_classes = response.json()
-    return chosen_classes
+    chosenClasses = response.json()
+    return chosenClasses
 
 
-def updateCoursesJson():
+def updateCoursesJson(doubleVar):
     """
     更新courses.json文件
+    :param doubleVar: DoubleVar对象。用于显示进度条
     """
     courses = []
     codes = []
@@ -117,30 +118,41 @@ def updateCoursesJson():
                 courses.append(course)
 
     _updateCourseJson("xk_b", "全部课程")
+    doubleVar.set(0.2)
+
     _updateCourseJson("xk_n", "全部课程")
+    doubleVar.set(0.4)
+
     _updateCourseJson("xk_8", "体育课程")
+    doubleVar.set(0.6)
+
     _updateCourseJson("xk_zyjckc", "专业基础课程")
+    doubleVar.set(0.8)
+
     _updateCourseJson("zy_qb", "所有类（专业）")
+    doubleVar.set(1.0)
 
     with open("courses.json", "w", encoding="UTF-8") as f:
         json.dump(courses, f, ensure_ascii=False)
 
 
-def updateClassJson(wishList: WishList):
+def updateClassJson(wishList: WishList, doubleVar):
     """
     更新classes.json文件
     :param wishList: wishList对象。本方法只会获取wishList中的课程，以减少网络请求时间。
+    :param doubleVar: DoubleVar对象。用于显示进度条
     """
     url = f"http://zdbk.zju.edu.cn/jwglxt/xsxk/zzxkghb_cxZzxkGhbJxbList.html?gnmkdm={GNMKDM}&su={username}"
     with open("courses.json", "r", encoding="UTF-8") as f:
         course_data = json.load(f)
 
-    course_code_contained = []
+    courseCodeContained = []
     details = []
     for wish in wishList.wishes:
+        doubleVar.set(wishList.wishes.index(wish) / len(wishList.wishes) / 2)
         for course in course_data:
             if Course.isEqualCourseCode(course["kcdm"], wish.courseCode):
-                course_code_contained.append(course["kcdm"])
+                courseCodeContained.append(course["kcdm"])
                 data = {
                     "dl": "",
                     "xn": XN,
@@ -153,11 +165,12 @@ def updateClassJson(wishList: WishList):
                 details.append(response.json())
                 break
     for class_ in getChosenClasses():
-        if class_["t_kcdm"] not in course_code_contained:
+        doubleVar.set(0.5 + getChosenClasses().index(class_) / len(getChosenClasses()) / 2)
+        if class_["t_kcdm"] not in courseCodeContained:
             # class和course的xkkh不一样
             for course in course_data:
                 if Course.isEqualCourseCode(course["kcdm"],class_["t_kcdm"]):
-                    course_code_contained.append(course["kcdm"])
+                    courseCodeContained.append(course["kcdm"])
                     data = {
                         "dl": "",
                         "xn": XN,
@@ -172,62 +185,6 @@ def updateClassJson(wishList: WishList):
             else:
                 # 已经选上的课，在courses.json中找不到对应的课程。例如形势与政策I，秋学期选的，春学期找不到。
                 ...
-                # details.append([
-                #     {
-                #         "brs": "-1",
-                #         "completeAnswer": True,
-                #         "gjhkc": "否",
-                #         "grs": "-1",
-                #         "jcmc": "<未能获取数据>",
-                #         "jgpxzd": "1",
-                #         "jsxm": class_["jsxm"],
-                #         "jszgh": class_["jszgh"],
-                #         "jxfs": "--",
-                #         "kssj": class_["vkssj"],
-                #         "listnav": "false",
-                #         "localeKey": "zh_CN",
-                #         "mxdx": "<未能获取数据>",
-                #         "pageable": True,
-                #         "queryModel": {
-                #             "currentPage": 1,
-                #             "currentResult": 0,
-                #             "entityOrField": False,
-                #             "limit": 15,
-                #             "offset": 0,
-                #             "pageNo": 0,
-                #             "pageSize": 15,
-                #             "showCount": 10,
-                #             "sorts": [],
-                #             "totalCount": 0,
-                #             "totalPage": 0,
-                #             "totalResult": 0
-                #         },
-                #         "rangeable": True,
-                #         "rs": "0/0",
-                #         "sfxz": "1",
-                #         "skdd": class_["skdd"],
-                #         "sksj": class_["sksj"],
-                #         "skxs": "<未能获取数据>",
-                #         "t_xxq": class_["t_xxq"],
-                #         "tabname": class_["tabname"],
-                #         "totalResult": "0",
-                #         "userModel": {
-                #             "monitor": False,
-                #             "roleCount": 0,
-                #             "roleKeys": "",
-                #             "roleValues": "",
-                #             "status": 0,
-                #             "usable": False
-                #         },
-                #         "vsksj": class_["vsksj"],
-                #         "vxxq": class_["vxxq"],
-                #         "xkkh": class_["xkkh"],
-                #         "xkzy": class_["xkzy"],
-                #         "xxq": class_["xxq"],
-                #         "yxrs": "0~0",
-                #         "zxs": class_["zxs"]
-                #     }
-                # ])
 
 
 

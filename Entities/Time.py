@@ -50,17 +50,17 @@ class ClassTime:
             raise TypeError(
                 "item must be an instance of ClassTime"
             )
-        first_half_time_list = deepcopy(self.firstHalfTimeList)
+        firstHalfTimeList = deepcopy(self.firstHalfTimeList)
         for i in other.firstHalfTimeList:
-            if i in first_half_time_list:
-                first_half_time_list.remove(i)
+            if i in firstHalfTimeList:
+                firstHalfTimeList.remove(i)
 
-        second_half_time_list = deepcopy(self.secondHalfTimeList)
+        secondHalfTimeList = deepcopy(self.secondHalfTimeList)
         for i in other.secondHalfTimeList:
-            if i in second_half_time_list:
-                second_half_time_list.remove(i)
+            if i in secondHalfTimeList:
+                secondHalfTimeList.remove(i)
 
-        return ClassTime(first_half_time_list, second_half_time_list)
+        return ClassTime(firstHalfTimeList, secondHalfTimeList)
 
     def __mul__(self, other):
         """
@@ -72,9 +72,9 @@ class ClassTime:
             raise TypeError(
                 "item must be an instance of ClassTime"
             )
-        first_half_time_list = [i for i in self.firstHalfTimeList if i in other.firstHalfTimeList]
-        second_half_time_list = [i for i in self.secondHalfTimeList if i in other.secondHalfTimeList]
-        return ClassTime(first_half_time_list, second_half_time_list)
+        firstHalfTimeList = [i for i in self.firstHalfTimeList if i in other.firstHalfTimeList]
+        secondHalfTimeList = [i for i in self.secondHalfTimeList if i in other.secondHalfTimeList]
+        return ClassTime(firstHalfTimeList, secondHalfTimeList)
 
     def __eq__(self, other):
         if not isinstance(other, ClassTime):

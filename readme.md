@@ -5,7 +5,7 @@ MOTIS: Multi-criteria Optimization Tool for Intelligent Scheduling
 
 ![python](https://img.shields.io/badge/python-3-blue)
 ![contributors](https://img.shields.io/badge/contributors-1-orange)
-![release](https://img.shields.io/badge/release-v1.0.0-green)
+![release](https://img.shields.io/badge/release-v1.0.1-green)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
 
@@ -39,39 +39,39 @@ MOTIS在选课时，支持您对各课程提出一些需求，具体如下：
 ### 一个简单的示例
 
 ```python
-wish_list.append("MATH1136G").withPriority(10).avoidTeacher("朱静芬").withStrategy(Strategy(hot=0, normal=1, cold=2))
+wishList.append("MATH1136G").withPriority(10).preferredTeacher("朱静芬").withStrategy(hot=0, normal=1, cold=2)
 
-wish_list.append("MATH1138F").withPriority(9)
+wishList.append("MATH1138F").withPriority(9)
 
-wish_list.append("ME1103F").withPriority(9)
+wishList.append("ME1103F").withPriority(9)
 
-wish_list.append("MARX1002G").withPriority(8).withTeacherFactor(2.0)
+wishList.append("MARX1002G").withPriority(8).withTeacherFactor(2.0)
 
-wish_list.append("EDU2001G").withPriority(6).preferredTeacher("沈莉萍").goodTeacher("程春")
+wishList.append("EDU2001G").withPriority(6).preferredTeacher("沈莉萍").goodTeacher("程春")
 
-wish_list.append("PHIL0902G").withPriority(6)
+wishList.append("PHIL0902G").withPriority(6)
 
-wish_list.append("PPAE1100G").withPriority(5).expectClassAt(Eleventh)
+wishList.append("PPAE1100G").withPriority(5).expectClassAt(Eleventh)
 
-wish_list.append("PPAE0065G").withPriority(4).avoidClassAt(MorningEight + First + Second + Third + Fourth + Fifth)
+wishList.append("PPAE0065G").withPriority(4).avoidClassAt(MorningEight + First + Second + Third + Fourth + Fifth)
 ```
 
 这就是最终您需要书写的代码。接下来我会对其语法进行描述。
 
-### 愿望清单对象wish_list
+### 愿望清单对象wishList
 
-这个工具提供了一个对象，叫做**wish_list**。这是一个愿望清单对象，您可以向其中添加想要的课程。
+这个工具提供了一个对象，叫做**wishList**。这是一个愿望清单对象，您可以向其中添加想要的课程。
 
 ```python
-wish_list.append(courseCode: str) -> Course
+wishList.append(courseCode: str) -> Course
 ```
-通过这个语句向wish_list中添加课程。比如，wish_list.append("MATH1136G")就是向wish_list中添加一个课程代码为MATH1136G的课程（微积分（甲）II ）。
+通过这个语句向wishList中添加课程。比如，wishList.append("MATH1136G")就是向wishList中添加一个课程代码为MATH1136G的课程（微积分（甲）II ）。
 
 这个函数的输入参数是一个字符串，表示课程的代码。
 
 这个方法的返回值是课程代码对应的课程的Course对象。Course对象是一个课程对象，我们稍后介绍他。
 
-下面是wish_list的部分源代码:
+下面是wishList的部分源代码:
 
 ```python
 class _WishList:
@@ -122,31 +122,23 @@ course.withPriority(10)		# course是一个Course对象
 
 #### 志愿选择策略
 
-strategy用于描述选课时选择志愿的策略，是一个Strategy对象。
+strategy用于描述选课时选择志愿的策略，由三个整数来描述。
 
 我们知道，一个学生一门课可以选择最多三个志愿，一个志愿对应一个教学班。
 
 一般来说，我们选课的时候会选择三个志愿，分别是第一志愿、第二志愿和第三志愿。其中第一志愿是比较热门的教学班，第二志愿和第三志愿是比较冷门的教学班。这样可以提高选课成功的概率。
 
-当然这个策略是可以调整的，我们可以通过Strategy对象来描述我们的志愿选择策略。
-
-Strategy对象的构造函数如下：
+当然这个策略是可以调整的，我们可以通过下面的方法来描述我们的志愿选择策略：
 
 ```python
-Strategy(hot: int, normal: int, cold: int)
+withStrategy(self, *, hot: int, normal: int, cold: int) -> Course
 ```
 
-hot表示选几个热门教学班，normal表示选几个普通教学班，cold表示选几个冷门教学班。这三个数字的和必须等于3，即使这门课只有两个教学班。在调用时建议显式写出hot,normal,cold这三个参数的名字，从而提高代码可读性。
+hot表示选几个热门教学班，normal表示选几个普通教学班，cold表示选几个冷门教学班。这三个数字的和必须等于3，即使这门课只有两个教学班。在调用时必须显式写出hot,normal,cold这三个参数的名字，从而提高代码可读性。
 
 cold越多，对应越保守的策略，选上的概率越高。hot越多，对应越激进、大胆的策略，选上的概率越低。
 
-默认的策略是Strategy(hot=1, normal=2, cold=0)。如果用户不设置策略，那么就采用默认的策略。
-
-我们可以通过Course对象的这个方法来设置课程的选课策略：
-
-```python
-withStrategy(self, strategy: Strategy) -> Course
-```
+默认的策略是`hot=1, normal=2, cold=0`。如果用户不设置策略，那么就采用默认的策略。
 
 这个方法会返回这个Course对象，所以我们可以通过链式调用的方式来设置选课策略。
 
@@ -337,8 +329,8 @@ class Course:
         self.priority = priority
         return self
     
-    def withStrategy(self, strategy: Strategy):
-        self.strategy = strategy
+    def withStrategy(self, *, hot: int, normal: int, cold: int):
+        self.strategy = Strategy(hot, normal, cold)
         return self
     
     def onlyChooseFromTheseTeachers(self, *teacherName):
@@ -395,13 +387,13 @@ class Course:
 以下是几个添加愿望课程并描述的例子:
 
 ```python
-wish_list.append("MATH1136G").withPriority(10).withStrategy(Strategy(hot=1, normal=1, cold=1)).onlyChooseFromTheseTeachers("张三", "李四").expectClassAt(Night)
+wishList.append("MATH1136G").withPriority(10).withStrategy(hot=1, normal=1, cold=1).onlyChooseFromTheseTeachers("张三", "李四").expectClassAt(Night)
 # 这表示我希望选MATH1136G这门课，优先级为10，选课策略是三个志愿选一个热门教学班，一个普通教学班，一个冷门教学班。只选张三和李四的课。希望这门课在上晚上的课上。
 
-wish_list.append("MARX1002G").withPriority(8).preferredTeacher("王五").goodTeacher("赵六", "周七").avoidTeacher("张八").avoidClassAt(ClassTime([(2, 1), (2, 2), (2, 3)], [(2, 1), (2, 2), (2, 3)])
+wishList.append("MARX1002G").withPriority(8).preferredTeacher("王五").goodTeacher("赵六", "周七").avoidTeacher("张八").avoidClassAt(ClassTime([(2, 1), (2, 2), (2, 3)], [(2, 1), (2, 2), (2, 3)])
 # 这表示我希望选MARX1002G这门课，优先级为8，很喜欢王五老师的课，也比较喜欢赵六和周七老师的课，不喜欢张八老师的课。希望这门课在上半学期的周二的第一到第三节课，下半学期的周二的第一到第三节课上课。
 
-wish_list.append("CSCI1001G").withPriority(5).withTeacherFactor(2.0).withTimeFactor(1.0).withPossibilityFactor(3.0)
+wishList.append("CSCI1001G").withPriority(5).withTeacherFactor(2.0).withTimeFactor(1.0).withPossibilityFactor(3.0)
 # 这表示我希望选CSCI1001G这门课，优先级为5，我认为教师对这门课的重要性是时间的两倍，选上的概率的三倍。
 ```
 
@@ -428,40 +420,40 @@ wish_list.append("CSCI1001G").withPriority(5).withTeacherFactor(2.0).withTimeFac
 
 ```python
 # 1. MATH1136G，优先级为10，想上朱静芬老师的课，选课策略大胆
-wish_list.append("MATH1136G").withPriority(10).preferredTeacher("朱静芬").withStrategy(Strategy(hot=2, normal=1, cold=0))
+wishList.append("MATH1136G").withPriority(10).preferredTeacher("朱静芬").withStrategy(hot=2, normal=1, cold=0)
 
 # 2. PHY1001G，优先级为9
-wish_list.append("PHY1001G").withPriority(9)
+wishList.append("PHY1001G").withPriority(9)
 
 # 3. MATH1138F，优先级为9
-wish_list.append("MATH1138F").withPriority(9)
+wishList.append("MATH1138F").withPriority(9)
 
 # 4. ME1103F，优先级为9
-wish_list.append("ME1103F").withPriority(9)
+wishList.append("ME1103F").withPriority(9)
 
 # 5. MARX1002G，优先级为8，最好选个好老师
-wish_list.append("MARX1002G").withPriority(8).withTeacherFactor(2.0)
+wishList.append("MARX1002G").withPriority(8).withTeacherFactor(2.0)
 
 # 6. ME1002F，优先级为7
-wish_list.append("ME1002F").withPriority(7)
+wishList.append("ME1002F").withPriority(7)
 
 # 7. CS1241G，优先级为7
-wish_list.append("CS1241G").withPriority(7)
+wishList.append("CS1241G").withPriority(7)
 
 # 8. EDU2001G，优先级为6，最好能上沈莉萍老师的课，程春老师的也不错
-wish_list.append("EDU2001G").withPriority(6).preferredTeacher("沈莉萍").goodTeacher("程春")
+wishList.append("EDU2001G").withPriority(6).preferredTeacher("沈莉萍").goodTeacher("程春")
 
 # 9. PHIL0902G，优先级为6
-wish_list.append("PHIL0902G").withPriority(6)
+wishList.append("PHIL0902G").withPriority(6)
 
 # 10. PPAE1100G，优先级为5，最好在晚上第一节课上课
-wish_list.append("PPAE1100G").withPriority(5).expectClassAt(Eleventh)
+wishList.append("PPAE1100G").withPriority(5).expectClassAt(Eleventh)
 
 # 11. PPAE0065G，优先级为4，不要在早上上课
-wish_list.append("PPAE0065G").withPriority(4).avoidClassAt(First + Second + Third + Fourth + Fifth)
+wishList.append("PPAE0065G").withPriority(4).avoidClassAt(First + Second + Third + Fourth + Fifth)
 
 # 12. BEFS0402G，优先级为3
-wish_list.append("BEFS0402G").withPriority(3)
+wishList.append("BEFS0402G").withPriority(3)
 ```
 
 ## 使用方法
@@ -543,22 +535,22 @@ MIT LICENSE
 
 ```python
 # 1. MATH1136G，优先级为10，想上朱静芬老师的课，选课策略大胆
-wish_list.append("MATH1136G").withPriority(10).preferredTeacher("朱静芬").withStrategy(Strategy(hot=2, normal=1, cold=0))
+wishList.append("MATH1136G").withPriority(10).preferredTeacher("朱静芬").withStrategy(hot=2, normal=1, cold=0)
 
 # 2. PHY1001G，优先级为9
-wish_list.append("PHY1001G").withPriority(9)
+wishList.append("PHY1001G").withPriority(9)
 
 # 3. MATH1138F，优先级为9
-wish_list.append("MATH1138F").withPriority(9)
+wishList.append("MATH1138F").withPriority(9)
 
 # 4. ME1103F，优先级为9
-wish_list.append("ME1103F").withPriority(9)
+wishList.append("ME1103F").withPriority(9)
 
 # 5. MARX1002G，优先级为8，最好选个好老师
-wish_list.append("MARX1002G").withPriority(8).withTeacherFactor(2.0)
+wishList.append("MARX1002G").withPriority(8).withTeacherFactor(2.0)
 
 # 6. ME1002F，优先级为7
-wish_list.append("ME1002F").withPriority(7)
+wishList.append("ME1002F").withPriority(7)
 ```
 
 接下来，用户将向你描述他的选课需求。

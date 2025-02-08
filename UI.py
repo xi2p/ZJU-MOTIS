@@ -3,60 +3,84 @@ from tkinter import *
 from tkinter.ttk import Button, Entry
 from tkinter.scrolledtext import ScrolledText
 from tkinter.messagebox import showinfo, showerror
-import idlelib.colorizer as idc
+from lib import colorizer as idc
 import idlelib.percolator as idp
 from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
 import network
 import threading
-from data import loadCourseData, loadClassData, initClassTable, course_data
+import time
+from data import loadCourseData, loadClassData, initClassTable, courseData, filterClassSetByCondition
 
 
-# def CodeConfirmBox(code: str):
-#     class _CodeConfirmWindow(Tk):
-#         def __init__(self):
-#             super().__init__()
-#             self.title("请确认要执行的代码")
-#             self.geometry('800x600')
-#             self.iconbitmap("icon.ico")
-#             textPad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 16))
-#             # textPad.pack(fill=BOTH, expand=1)
-#             textPad.focus_set()
-#             idc.color_config(textPad)
-#             textPad.focus_set()
-#             textPad.config(bg='#002240', fg='white')
-#             textPad.insert(INSERT, code)
-#             p = idp.Percolator(textPad)
-#             d = idc.ColorDelegator()
-#             p.insertfilter(d)
-#             buttonConfirm = Button(self, text="确认", command=self.confirm, font=('Consolas', 16), anchor=CENTER)
-#             buttonCancel = Button(self, text="取消", command=self.cancel, font=('Consolas', 16), anchor=CENTER)
-#             textPad.place(x=0, y=0, width=800, height=560, anchor=NW)
-#             buttonConfirm.place(x=250, y=560, width=80, height=40, anchor=NE)
-#             buttonCancel.place(x=550, y=560, width=80, height=40, anchor=NW)
-#             textPad.config(state=DISABLED)
-#
-#             self.confirmStatus = None
-#
-#         def confirm(self):
-#             self.confirmStatus = True
-#             self.destroy()
-#
-#         def cancel(self):
-#             self.confirmStatus = False
-#             self.destroy()
-#
-#         def destroy(self):
-#             if self.confirmStatus is None:
-#                 self.confirmStatus = False
-#             super().destroy()
-#
-#     window = _CodeConfirmWindow()
-#     while True:
-#         window.update()
-#         if window.confirmStatus is not None:
-#             break
-#     return window.confirmStatus
+class ProgressBar(Canvas):
+    def __init__(self, master, doubleVar: DoubleVar, stringVar: StringVar, width=600):
+        super().__init__(master, width=width, height=40)
+        self.progress = 0
+        self.text = ''
+
+        self.width = width
+        self.height = 40
+
+        self.doubleVar = doubleVar
+        self.stringVar = stringVar
+
+        self.frameNum = 60
+        self.frames = [PhotoImage(file='./loading.gif', format='gif -index %i' % i) for i in range(self.frameNum)]
+
+        self['bg'] = 'white'
+
+        self.create_rectangle(8, 6, self.width - 8, 13, fill='white', outline='#14A8DD', tags='progress')
+        self.create_text(30, 18, text=self.text + f'[{round(self.progress * 100)}%]', fill='#202020', anchor=NW,
+                         tags='text')
+
+        self.destroyed = False
+        self.threadRunning = True
+        thread = threading.Thread(target=self.updateImage)
+        thread.daemon = True
+        thread.start()
+
+    def updateImage(self):
+        index = 0
+        while not self.destroyed:
+            if index == 0:
+                self.delete('gif')
+            self.create_image(
+                8, 18, image=self.frames[index], anchor=NW, tags='gif'
+            )
+            index = (index + 1) % self.frameNum
+
+            if self.progress != self.doubleVar.get() or self.text != self.stringVar.get():
+                self.create_rectangle(10 + (self.width - 20) * self.progress, 8,
+                                      10 + (self.width - 20) * self.doubleVar.get(), 11, fill='#14A8DD',
+                                      outline='#14A8DD', tags='progress')
+                self.progress = self.doubleVar.get()
+                self.text = self.stringVar.get()
+                self.itemconfigure('text', text=self.text+f'[{round(self.progress * 100)}%]')
+
+
+                self.update()
+
+            time.sleep(0.06)
+        self.threadRunning = False
+
+    def reset(self):
+        self.delete(ALL)
+        self.create_rectangle(8, 6, self.width - 8, 13, fill='white', outline='#14A8DD', tags='progress')
+        self.create_text(30, 18, text=self.text + f'[{round(self.progress * 100)}%]', fill='#202020', anchor=NW,
+                         tags='text')
+        self.destroyed = True
+        while self.threadRunning:
+            time.sleep(0.01)
+        self.destroyed = False
+        self.threadRunning = True
+        thread = threading.Thread(target=self.updateImage)
+        thread.daemon = True
+        thread.start()
+
+    def destroy(self):
+        self.destroyed = True
+        super().destroy()
 
 
 class ScheduleTable(Canvas):
@@ -99,50 +123,96 @@ class ScheduleTable(Canvas):
     def fill(self):
         self.delete("fill")
         for weekday in range(1, 8):
-            last_course_name = ''
-            start_time = 0
-            last_class = None
+            lastCourseName = ''
+            startTime = 0
+            lastClass = None
+            lastDuality = False
+            # 这里有两种情况，一种是这个课程的志愿里只有选上或者没选上的班，另一种是这个课程的志愿里两者都有
+            # 如果是第二种情况，这一个单元格里既要显示蓝色的字，又要显示黑色的字
             for time in range(1, 15):
                 if self.half == 0:
-                    class_time = ClassTime([(weekday, time)], [])
+                    classTime = ClassTime([(weekday, time)], [])
                 else:
-                    class_time = ClassTime([], [(weekday, time)])
-                course_name = ''
+                    classTime = ClassTime([], [(weekday, time)])
+                courseName = ''
                 class_now = None
+
                 for class_ in self.classTable.classes:
-                    if class_.classTime.isOverlapped(class_time):
-                        course_name = class_.course.courseName
+                    if class_.classTime.isOverlapped(classTime):
+                        courseName = class_.course.courseName
                         class_now = class_
                         break
 
-                if last_course_name != course_name or course_name == '':
+                # 判断双重性
+                confirmedClasses = filterClassSetByCondition(
+                    lambda x: x.status == ClassStatus.CONFIRMED
+                              and x.course.courseName == courseName
+                              and x.classTime.isOverlapped(classTime)
+                )
+                unfilteredClasses = filterClassSetByCondition(
+                    lambda x: x.course.courseName == courseName
+                              and x.status != ClassStatus.CONFIRMED
+                              and x.classTime.isOverlapped(classTime)
+                )
+                if confirmedClasses and unfilteredClasses:
+                    duality = True
+                else:
+                    duality = False
+
+                if lastCourseName != courseName or courseName == '' or duality != lastDuality:
                     # 画上上一个课程的名字
                     self.create_line(
-                        80 + 100*weekday - 100, 40*start_time, 80 + 100*weekday, 40*start_time,
+                        80 + 100*weekday - 100, 40*startTime, 80 + 100*weekday, 40*startTime,
                         fill='black', tags="fill"
                     )
-                    # self.create_text(80 + 100*weekday - 50, (start_time+time)*10, text=last_course_name)
-                    if last_course_name:
-                        pixel_length = 0
-                        font = 12
-                        for ch in last_course_name:
-                            if ord(ch) < 128:
-                                pixel_length += font
+                    # self.create_text(80 + 100*weekday - 50, (startTime+time)*10, text=lastCourseName)
+                    if lastCourseName:
+                        if not lastDuality:
+                            pixelLength = 0
+                            font = 12
+                            for ch in lastCourseName:
+                                if ord(ch) < 128:
+                                    pixelLength += font
+                                else:
+                                    pixelLength += font * 2
+                            if pixelLength > 90 * (time - startTime) * 1.414:
+                                font = int(90 * (time - startTime) * 1.414 / pixelLength * font)
+                            # 课程的志愿里只有选上或者没选上的班一种
+                            if lastCourseName is not None and lastClass.status == ClassStatus.CONFIRMED:
+                                fg = "black"
                             else:
-                                pixel_length += font * 2
-                        if pixel_length > 90*(time-start_time)*2:
-                            font = int(90*(time-start_time)*2/pixel_length*font)
-                        if last_course_name is not None and last_class.course.status == CourseStatus.SELECTED:
-                            fg = "black"
+                                fg = "blue"
+                            self.create_window(80 + 100*weekday - 50, (startTime+time)*20,
+                                               window=Label(self.master, text=lastCourseName, fg=fg, bg="#F1F1F1", font=('simHei', font), wraplength=90),
+                                               anchor=CENTER, width=90, height=40*(time-startTime)-2,
+                                               tags="fill")
                         else:
-                            fg = "blue"
-                        self.create_window(80 + 100*weekday - 50, (start_time+time)*20,
-                                           window=Label(self.master, text=last_course_name, fg=fg, bg="#F1F1F1", font=('simHei', font), wraplength=90),
-                                           anchor=CENTER, width=90, height=40*(time-start_time)-2,
-                                           tags="fill")
-                    last_course_name = course_name
-                    last_class = class_now
-                    start_time = time
+                            pixelLength = 0
+                            font = 12
+                            for ch in lastCourseName:
+                                if ord(ch) < 128:
+                                    pixelLength += font
+                                else:
+                                    pixelLength += font * 2
+                            if pixelLength > 90 * (time - startTime):
+                                font = int(90 * (time - startTime) / pixelLength * font * 1.414)
+                            self.create_window(80 + 100 * weekday - 50, (startTime * 20 + time * 20) - 10*(time - startTime),
+                                               window=Label(self.master, text=lastCourseName, fg="black",
+                                                            bg="#F1F1F1",
+                                                            font=('simHei', font), wraplength=90),
+                                               anchor=CENTER, width=90, height=20 * (time - startTime) - 2,
+                                               tags="fill")
+                            self.create_window(80 + 100 * weekday - 50, (startTime * 20 + time * 20) + 10*(time - startTime),
+                                               window=Label(self.master, text=lastCourseName, fg="blue",
+                                                            bg="#F1F1F1",
+                                                            font=('simHei', font), wraplength=90),
+                                               anchor=CENTER, width=90, height=20 * (time - startTime) - 2,
+                                               tags="fill")
+                    lastCourseName = courseName
+                    lastClass = class_now
+                    lastDuality = duality
+                    startTime = time
+
 
 
 class CandidateTable(Canvas):
@@ -188,11 +258,6 @@ class CandidateTable(Canvas):
                                  font=('simHei', 16),
                                  fill="blue" if class_.status==ClassStatus.CONFIRMED else "red",
                                  anchor=CENTER)
-                # self.create_text(x+100, y+80+i*60+30,
-                #                  text="已选上" if class_.course.status==1 else "待筛选",
-                #                  font=('simHei', 16),
-                #                  fill="blue" if class_.course.status==1 else "red",
-                #                  anchor=CENTER)
                 # 教师姓名
                 self.create_text(x+220, y+80+i*60+30, text="\n".join(class_.teacherNames), font=('simHei', 10), fill="black", anchor=CENTER)
                 # 学期
@@ -210,55 +275,55 @@ class CandidateTable(Canvas):
             y += 80+len(classes)*60+40
 
         # 通过滑动条滚动，展示所有内容
-        self.max_y = y
-        self.now_y_delta = 0
+        self.maxY = y
+        self.nowYDelta = 0
         self.bind("<MouseWheel>", self.onMouseWheel)
 
     def onMouseWheel(self, *args):
         delta = args[0].delta/2
-        if self.now_y_delta+delta > 0:
+        if self.nowYDelta+delta > 0:
             delta = 0
-        if self.now_y_delta+delta < 720-self.max_y:
+        if self.nowYDelta+delta < 720-self.maxY:
             delta = 0
-        self.now_y_delta += delta
+        self.nowYDelta += delta
         self.move("all", 0, delta)
 
 
-class ResultWindow(Tk):
-    def __init__(self):
-        super().__init__()
+class ResultWindow(Toplevel):
+    def __init__(self, master):
+        super().__init__(master)
         self.title("选课结果")
         self.iconbitmap("icon.ico")
-        self.show_widget = ScheduleTable(self, class_table, 0)
-        self.show_widget.place(x=0, y=40, anchor=NW)
-        self.name_label = Label(self, text="春学期", font=('simHei', 20))
-        self.button_1 = Button(self, text="春学期", command=lambda: self.show(0))
-        self.button_2 = Button(self, text="夏学期", command=lambda: self.show(1))
-        self.button_3 = Button(self, text="志愿表", command=lambda: self.show(2))
-        self.name_label.place(x=780, y=0, height=40, anchor=NE)
-        self.button_1.place(x=0, y=0, width=80, height=40, anchor=NW)
-        self.button_2.place(x=85, y=0, width=80, height=40, anchor=NW)
-        self.button_3.place(x=170, y=0, width=80, height=40, anchor=NW)
+        self.showWidget = ScheduleTable(self, classTable, 0)
+        self.showWidget.place(x=0, y=40, anchor=NW)
+        self.nameLabel = Label(self, text="春学期", font=('simHei', 20))
+        self.button1 = Button(self, text="春学期", command=lambda: self.show(0))
+        self.button2 = Button(self, text="夏学期", command=lambda: self.show(1))
+        self.button3 = Button(self, text="志愿表", command=lambda: self.show(2))
+        self.nameLabel.place(x=780, y=0, height=40, anchor=NE)
+        self.button1.place(x=0, y=0, width=80, height=40, anchor=NW)
+        self.button2.place(x=85, y=0, width=80, height=40, anchor=NW)
+        self.button3.place(x=170, y=0, width=80, height=40, anchor=NW)
         self.geometry("780x600")
 
     def show(self, code: int):
-        self.show_widget.destroy()
+        self.showWidget.destroy()
         if code == 0:
-            self.show_widget = ScheduleTable(self, class_table, 0)
-            self.name_label.config(text="春学期")
+            self.showWidget = ScheduleTable(self, classTable, 0)
+            self.nameLabel.config(text="春学期")
             self.geometry("780x600")
-            self.name_label.place(x=780, y=0, height=40, anchor=NE)
+            self.nameLabel.place(x=780, y=0, height=40, anchor=NE)
         elif code == 1:
-            self.show_widget = ScheduleTable(self, class_table, 1)
-            self.name_label.config(text="夏学期")
+            self.showWidget = ScheduleTable(self, classTable, 1)
+            self.nameLabel.config(text="夏学期")
             self.geometry("780x600")
-            self.name_label.place(x=780, y=0, height=40, anchor=NE)
+            self.nameLabel.place(x=780, y=0, height=40, anchor=NE)
         elif code == 2:
-            self.show_widget = CandidateTable(self, class_table)
-            self.name_label.config(text="志愿表")
+            self.showWidget = CandidateTable(self, classTable)
+            self.nameLabel.config(text="志愿表")
             self.geometry("800x760")
-            self.name_label.place(x=800, y=0, height=40, anchor=NE)
-        self.show_widget.place(x=0, y=40, anchor=NW)
+            self.nameLabel.place(x=800, y=0, height=40, anchor=NE)
+        self.showWidget.place(x=0, y=40, anchor=NW)
 
 
 class Application(Tk):
@@ -310,6 +375,10 @@ class Application(Tk):
         self.showButton.place(x=600, y=520, width=200, height=40, anchor=NW)
         self.authorButton.place(x=600, y=560, width=200, height=40, anchor=NW)
 
+        self.progressBar = None
+        self.doubleVar = DoubleVar()
+        self.stringVar = StringVar()
+
     def _login(self):
         username = self.accountEntry.get()
         password = self.passwordEntry.get()
@@ -325,7 +394,7 @@ class Application(Tk):
                 self.updateButton.config(state=NORMAL)
                 self.selectButton.config(state=NORMAL)
                 self.showButton.config(state=NORMAL)
-                if not course_data:
+                if not courseData:
                     showinfo("提示", "检测到课程数据为空，即将自动更新课程数据")
                     self.updateCourse()
             else:
@@ -348,8 +417,13 @@ class Application(Tk):
         self.selectButton.config(state=DISABLED)
         self.updateButton.config(text="正在更新课程数据...")
 
+
         try:
-            network.updateCoursesJson()
+            self.enableProgress()
+            self.stringVar.set("下载课程档案...")
+            network.updateCoursesJson(self.doubleVar)
+            self.resetProgress()
+            self.stringVar.set("载入课程档案...")
             loadCourseData()
             showinfo("更新成功", "课程数据更新成功")
         except Exception as e:
@@ -358,6 +432,7 @@ class Application(Tk):
         self.updateButton.config(state=NORMAL)
         self.selectButton.config(state=NORMAL)
         self.updateButton.config(text="更新课程数据")
+        self.disableProgress()
 
     def updateCourse(self):
         thread = threading.Thread(target=self._updateCourse)
@@ -371,11 +446,22 @@ class Application(Tk):
         self.selectButton.config(text="正在选课...")
 
         try:
+            self.enableProgress()
             exec(self.codePad.get(1.0, END))
-            network.updateClassJson(wish_list)
-            loadClassData()
-            initClassTable(class_table)
-            selectClass(class_table, wish_list)
+
+            self.stringVar.set("下载班级档案...")
+            network.updateClassJson(wishList, self.doubleVar)
+            self.resetProgress()
+
+            self.stringVar.set("载入班级档案...")
+            loadClassData(self.doubleVar)
+            initClassTable(classTable)
+            self.resetProgress()
+
+            self.stringVar.set("自动选课中...")
+            selectClass(classTable, wishList, doubleVar=self.doubleVar)
+
+            time.sleep(0.1)
             showinfo("选课完毕", "选课完毕")
             self.selectButton.config(text="自动选课完毕")
 
@@ -386,6 +472,7 @@ class Application(Tk):
             self.selectButton.config(text="开始自动选课")
         self.showButton.config(state=NORMAL)
         self.selectStatus = False
+        self.disableProgress()
 
 
     def selectCourse(self):
@@ -394,66 +481,33 @@ class Application(Tk):
         thread.daemon = True
         thread.start()
 
-        # # root0 = Tk()
-        # # root0.title("课程表")
-        # # Label(root0, text="春学期", font=('simHei', 20)).pack()
-        # # st0 = ScheduleTable(root0, class_table, 0)
-        # # st0.pack()
-        # #
-        # # root1 = Tk()
-        # # root1.title("课程表")
-        # # Label(root1, text="夏学期", font=('simHei', 20)).pack()
-        # # st1 = ScheduleTable(root1, class_table, 1)
-        # # st1.pack()
-        #
-        # while self.selectStatus:
-        #     # st0.fill()
-        #     # st1.fill()
-        #     # st0.update()
-        #     # st1.update()
-        #     # root0.update()
-        #     # root1.update()
-        #     self.update()
-        #
-        # # st0.fill()
-        # # st1.fill()
-        # # root2 = Tk()
-        # # root2.title("志愿清单")
-        # # ct = CandidateTable(root2, class_table)
-        # # ct.pack()
-        # self.showResult()
-
 
     def showResult(self):
         self.showButton.config(state=DISABLED)
-        ResultWindow()
-        # root0 = Tk()
-        # root0.iconbitmap("icon.ico")
-        # root0.title("课程表")
-        # Label(root0, text="春学期", font=('simHei', 20)).pack()
-        # st0 = ScheduleTable(root0, class_table, 0)
-        # st0.pack()
-        #
-        # root1 = Tk()
-        # root1.iconbitmap("icon.ico")
-        # root1.title("课程表")
-        # Label(root1, text="夏学期", font=('simHei', 20)).pack()
-        # st1 = ScheduleTable(root1, class_table, 1)
-        # st1.pack()
-        #
-        # root2 = Tk()
-        # root2.iconbitmap("icon.ico")
-        # root2.title("志愿清单")
-        # ct = CandidateTable(root2, class_table)
-        # ct.pack()
+        ResultWindow(self)
         self.showButton.config(state=NORMAL)
 
     def showAuthor(self):
         showinfo("关于MOTIS", """作者：xi2p
-版本：1.0.0
+版本：1.0.1(2025/2/8)
 Fork me on Github:
 https://github.com/xi2p/ZJU-MOTIS
 """)
+
+    def enableProgress(self):
+        self.progressBar = ProgressBar(self, self.doubleVar, self.stringVar, width=580)
+        self.doubleVar.set(0)
+        self.stringVar.set("")
+        self.progressBar.place(x=0, y=560)
+
+    def resetProgress(self):
+        self.doubleVar.set(0)
+        self.stringVar.set("")
+        self.progressBar.reset()
+
+    def disableProgress(self):
+        self.progressBar.destroy()
+        self.progressBar = None
 
     def destroy(self):
         super().destroy()
@@ -464,8 +518,8 @@ https://github.com/xi2p/ZJU-MOTIS
 
 if __name__ == '__main__':
     loadCourseData()
-    wish_list = WishList()
-    class_table = ClassTable()
+    wishList = WishList()
+    classTable = ClassTable()
 
     window = Application()
     mainloop()
