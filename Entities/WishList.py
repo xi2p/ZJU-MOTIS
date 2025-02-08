@@ -11,7 +11,7 @@ from .Course import Course
 class WishList:
     def __init__(self):
         self.wishes : List[Course] = []
-        self.max_priority = -1
+        self.maxPriority = -1
 
     def append(self, course) -> Course:
         self.wishes.append(course)

@@ -9,15 +9,15 @@ import re
 import network
 import os
 
-course_data = []
-class_data = []
+courseData = []
+classData = []
 
 with open("teacher.json", "r", encoding="utf-8") as f:
     teacher_data = json.load(f)
 
 
 NULL_TEACHER_SCORE = -1 # 无法查到教师评分时的返回值。应当小于所有可能的评分值
-teacher_rate_pool = {}  # 用于缓存教师评分。避免重复查找
+teacherRatePool = {}  # 用于缓存教师评分。避免重复查找
 
 def getTeacherRate(teacherName: str) -> float:
     """
@@ -25,17 +25,17 @@ def getTeacherRate(teacherName: str) -> float:
     :param teacherName: 教师名
     :return: 评分。如果查不到，返回NULL_TEACHER_SCORE
     """
-    if teacherName in teacher_rate_pool:
-        return teacher_rate_pool[teacherName]
+    if teacherName in teacherRatePool:
+        return teacherRatePool[teacherName]
     for teacher in teacher_data["teachers"]:
         if teacher["name"] == teacherName:
             try:
-                teacher_rate_pool[teacherName] = float(teacher["rate"])
+                teacherRatePool[teacherName] = float(teacher["rate"])
                 return float(teacher["rate"])
             except:     # 查不到、分数为N/A，这样
-                teacher_rate_pool[teacherName] = NULL_TEACHER_SCORE
+                teacherRatePool[teacherName] = NULL_TEACHER_SCORE
                 return NULL_TEACHER_SCORE
-    teacher_rate_pool[teacherName] = NULL_TEACHER_SCORE
+    teacherRatePool[teacherName] = NULL_TEACHER_SCORE
     return NULL_TEACHER_SCORE
 
 
@@ -46,7 +46,7 @@ def getTeacherRate(teacherName: str) -> float:
 #     """
 #     def __init__(self):
 #         self.classes = deepcopy(all_class_set)
-course_object_pool = []
+courseObjectPool = []
 
 def getCourseFromCourseCode(courseCode: str) -> Course.Course:
     """
@@ -55,12 +55,12 @@ def getCourseFromCourseCode(courseCode: str) -> Course.Course:
     :return: 课程信息(courseCode, courseName, credit, courseType: CourseType, academy, status)
     """
 
-    for course in course_object_pool:
+    for course in courseObjectPool:
         if Course.Course.isEqualCourseCode(courseCode, course.courseCode):
             return course
 
     target: Union[Dict, None] = None
-    for course in course_data:
+    for course in courseData:
         if Course.Course.isEqualCourseCode(courseCode, course["xskcdm"]):
             target = course
             break
@@ -68,7 +68,7 @@ def getCourseFromCourseCode(courseCode: str) -> Course.Course:
     if target is None:
         raise ValueError(f"未找到课程代码匹配的课程'{courseCode}'")
 
-    course_type = Course.CourseType(
+    courseType = Course.CourseType(
         target.get("kclb", ""),  # 课程类别
         target.get("kcgs", ""),  # 课程归属
         target.get("kcbs", ""),  # 课程标识
@@ -78,12 +78,12 @@ def getCourseFromCourseCode(courseCode: str) -> Course.Course:
         target["xskcdm"],  # 课程代码
         target["kcmc"],  # 课程名称
         float(re.findall(r"~(.*?)~", target["kcxx"])[0]),  # 学分
-        course_type,  # 课程类别
+        courseType,  # 课程类别
         target["kkxy"],  # 开课学院
         Constants.CourseStatus.NOT_SELECTED
         # Constants.CourseStatus.SELECTED if int(target["kcxzzt"]) else Constants.CourseStatus.NOT_SELECTED  # 课程选择状态
     )
-    course_object_pool.append(course)
+    courseObjectPool.append(course)
     return course
 
 
@@ -99,28 +99,28 @@ def getClassTimeFromString(time: str, semester) -> Time.ClassTime:
         return Time.ClassTime([], [])
     time = time.replace("<br>", ";")
     # Failed(Invalid day) to create class (2024-2025-2)-PHIL0702G-0007632-1E
-    first_half_time_list: List[Tuple[int, int]] = []
-    second_half_time_list: List[Tuple[int, int]] = []
+    firstHalfTimeList: List[Tuple[int, int]] = []
+    secondHalfTimeList: List[Tuple[int, int]] = []
     for piece in time.split(";"):
         # 以下代码用于正确解析课程的时间
         # 有的课程的时间是这样的：time="春周三第9,10节<br>夏周三第9,10节", semester="春夏"
         # 为了适应所有情况，我设计了以下代码
-        first_half, second_half = False, False
-        day, class_time = piece.split("第")
+        firstHalf, secondHalf = False, False
+        day, classTimeStr = piece.split("第")
         if "春" in day or "秋" in day:
-            first_half = True
+            firstHalf = True
             day = day[1:]
         if "夏" in day or "冬" in day:
-            second_half = True
+            secondHalf = True
             day = day[1:]
 
         if semester == "春" or semester == "秋":
-            first_half = True
+            firstHalf = True
         if semester == "夏" or semester == "冬":
-            second_half = True
+            secondHalf = True
 
-        if not first_half and not second_half:
-            first_half = second_half = True
+        if not firstHalf and not secondHalf:
+            firstHalf = secondHalf = True
 
         if day == "周一":
             day = Constants.Weekday.Monday
@@ -138,14 +138,14 @@ def getClassTimeFromString(time: str, semester) -> Time.ClassTime:
             day = Constants.Weekday.Sunday
         else:
             raise ValueError("Invalid day")
-        class_time = class_time.split("节")[0]
-        class_time = [int(i) for i in class_time.split(",")]
-        for i in class_time:
-            if first_half:
-                first_half_time_list.append((day, i))
-            if second_half:
-                second_half_time_list.append((day, i))
-    return Time.ClassTime(first_half_time_list, second_half_time_list)
+        classTimeStr = classTimeStr.split("节")[0]
+        classTimeStr = [int(i) for i in classTimeStr.split(",")]
+        for i in classTimeStr:
+            if firstHalf:
+                firstHalfTimeList.append((day, i))
+            if secondHalf:
+                secondHalfTimeList.append((day, i))
+    return Time.ClassTime(firstHalfTimeList, secondHalfTimeList)
 
 
 def getExamTimeListFromString(time: str) -> List[Time.ExamTime]:
@@ -159,7 +159,7 @@ def getExamTimeListFromString(time: str) -> List[Time.ExamTime]:
     if time in ["待定", "--", ""]:
         return [Time.ExamTime(datetime.datetime(1970, 1, 1), datetime.datetime(1970, 1, 1), True)]
     time = time.replace("<br>", ";").split(";")
-    time_list = []
+    timeList = []
     for exam in time:
         # 用re.findall提取时间
         (
@@ -168,20 +168,20 @@ def getExamTimeListFromString(time: str) -> List[Time.ExamTime]:
             end_hour, end_minute
         ) = re.findall(r"(.*?)年(.*?)月(.*?)日\((.*?):(.*?)-(.*?):(.*?)\)", exam)[0]
         # 转换为datetime对象
-        start_time = datetime.datetime(int(year), int(month), int(day), int(start_hour), int(start_minute))
-        end_time = datetime.datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
-        time_list.append(Time.ExamTime(start_time, end_time))
+        startTime = datetime.datetime(int(year), int(month), int(day), int(start_hour), int(start_minute))
+        endTime = datetime.datetime(int(year), int(month), int(day), int(end_hour), int(end_minute))
+        timeList.append(Time.ExamTime(startTime, endTime))
 
-    return time_list
+    return timeList
 
 
 def loadCourseData():
-    course_data.clear()
+    courseData.clear()
     if os.path.exists("courses.json"):
         with open("courses.json", "r", encoding="utf-8") as f:
-            course_data.extend(json.load(f))
+            courseData.extend(json.load(f))
 
-all_class_set = []
+allClassSet = []
 
 """
 运行时序：
@@ -193,35 +193,35 @@ all_class_set = []
 6. 将已选的课程对象插入classTable中，然后开始正式执行选课算法。
 """
 def loadClassData():
-    class_data.clear()
+    classData.clear()
     with open("classes.json", "r", encoding="utf-8") as f:
-        class_data.extend(json.load(f))
+        classData.extend(json.load(f))
 
-    confirmed_class_code_set = []
-    to_be_filtered_class_code_set = []
+    confirmedClassCodeSet = []
+    toBeFilteredClassCodeSet = []
     for class_ in network.getChosenClasses():
         if class_["sxbj"] == "1":
-            confirmed_class_code_set.append(class_["xkkh"])
+            confirmedClassCodeSet.append(class_["xkkh"])
             try:
                 # 标记课程状态为已选
                 getCourseFromCourseCode(class_["t_kcdm"]).status = Constants.CourseStatus.SELECTED
             except ValueError:
                 pass    # 已经选上的课，在courses.json中找不到对应的课程。例如形势与政策I，秋学期选的，春学期找不到。
         else:
-            to_be_filtered_class_code_set.append(class_["xkkh"])
+            toBeFilteredClassCodeSet.append(class_["xkkh"])
 
-    all_class_set.clear()
-    for course in class_data:
+    allClassSet.clear()
+    for course in classData:
         for class_ in course:
             try:
-                if class_["xkkh"] in confirmed_class_code_set:
+                if class_["xkkh"] in confirmedClassCodeSet:
                     class_status = Constants.ClassStatus.CONFIRMED
-                elif class_["xkkh"] in to_be_filtered_class_code_set:
+                elif class_["xkkh"] in toBeFilteredClassCodeSet:
                     class_status = Constants.ClassStatus.TO_BE_FILTERED
                 else:
                     class_status = Constants.ClassStatus.NOT_SELECTED
 
-                all_class_set.append(
+                allClassSet.append(
                     Class.Class(
                         class_["xkkh"],
                         getCourseFromCourseCode(re.findall(r"\)-(.*?)-", class_["xkkh"])[0]),
@@ -245,22 +245,22 @@ def loadClassData():
     # print(f"Succeeded to load all classes({len(all_class_set)} classes in total)")
 
 
-def filterClassSetByCondition(condition: Callable[[Class.Class], bool], src_set=None) -> List[Class.Class]:
+def filterClassSetByCondition(condition: Callable[[Class.Class], bool], srcSet=None) -> List[Class.Class]:
     """
     通过条件过滤班级集合
     调用示例：
     filterClassSetByCondition(lambda x: (Course.Course.isEqualCourseCode("MATH1136G", x.course.courseCode)))
     :param condition: 一个函数，接受一个班级对象，返回一个bool值
-    :param src_set: 源班级集合。默认为所有班级集合
+    :param srcSet: 源班级集合。默认为所有班级集合
     :return: 符合条件的班级集合
     """
-    if src_set is None:
-        src_set = all_class_set
-    class_set = []
-    for class_ in src_set:
+    if srcSet is None:
+        srcSet = allClassSet
+    classSet = []
+    for class_ in srcSet:
         if condition(class_):
-            class_set.append(class_)
-    return class_set
+            classSet.append(class_)
+    return classSet
 
 
 def initClassTable(classTable: ClassTable.ClassTable):
@@ -268,9 +268,9 @@ def initClassTable(classTable: ClassTable.ClassTable):
     获取zdbk上用户已经选的课程，然后将这些课程插入到classTable中
     :param classTable: classTable对象
     """
-    for class_data in network.getChosenClasses():
+    for chosenClassData in network.getChosenClasses():
         classes = filterClassSetByCondition(
-            lambda x: (x.classCode == class_data["xkkh"] and x.status == Constants.ClassStatus.CONFIRMED)
+            lambda x: (x.classCode == chosenClassData["xkkh"] and x.status == Constants.ClassStatus.CONFIRMED)
         )
         if len(classes) != 0:
             classTable.append(
@@ -282,7 +282,7 @@ if __name__ == '__main__':
     print("Start testing data.py")
     c = filterClassSetByCondition(lambda x: (Course.Course.isEqualCourseCode("MATH1136G", x.course.courseCode)))
     print(c)
-    print(len(course_object_pool))
+    print(len(courseObjectPool))
 
     course1 = getCourseFromCourseCode("MATH1136G")
     course2 = getCourseFromCourseCode("MATH1136G")

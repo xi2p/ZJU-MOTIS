@@ -53,7 +53,7 @@ kwlist = [
     'return',
     'try',
     'while',
-    'wish_list',
+    'wishList',
     'with',
     'yield'
 ]

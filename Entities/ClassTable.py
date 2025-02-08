@@ -42,12 +42,12 @@ class ClassTable:
         从课表中删除某门课程的所有班级
         :param course: Course对象
         """
-        class_to_remove = []
+        classToRemove = []
         for class_ in self.classes:
             if Course.isEqualCourseCode(class_.course.courseCode, course.courseCode):
-                class_to_remove.append(class_)
+                classToRemove.append(class_)
 
-        for class_ in class_to_remove:
+        for class_ in classToRemove:
             self.classes.remove(class_)
 
     def getNumberOfCandidates(self, course):

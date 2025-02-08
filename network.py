@@ -25,12 +25,12 @@ session = r.session()
 username = ""
 password = ""
 
-chosen_classes = None
+chosenClasses = None
 
-def encrypt(public_exponent, modulus, password):
-    password_int = int.from_bytes(bytes(password, 'ascii'), 'big')
-    result_int = pow(password_int, int(public_exponent, 16), int(modulus, 16))
-    return hex(result_int)[2:].rjust(128, '0')
+def encrypt(publicExponent, modulus, password):
+    passwordInt = int.from_bytes(bytes(password, 'ascii'), 'big')
+    resultInt = pow(passwordInt, int(publicExponent, 16), int(modulus, 16))
+    return hex(resultInt)[2:].rjust(128, '0')
 
 
 def loginZDBK() -> bool:
@@ -50,14 +50,14 @@ def loginZDBK() -> bool:
     modulus = re.findall(r"\"modulus\":\"(.*?)\"", response.text)[0]
     exponent = re.findall(r"\"exponent\":\"(.*?)\"", response.text)[0]
 
-    encrypted_password = encrypt(exponent, modulus, password)
+    encryptedPassword = encrypt(exponent, modulus, password)
 
     response = session.post(
         "http://zjuam.zju.edu.cn/cas/login?service=http%3A%2F%2Fzdbk.zju.edu.cn%2Fjwglxt%2Fxtgl%2Flogin_ssologin.html",
         headers=headers,
         data={
             "username": username,
-            "password": encrypted_password,
+            "password": encryptedPassword,
             "execution": execution,
             "_eventId": "submit",
         }
@@ -72,9 +72,9 @@ def getChosenClasses():
     获取已选课程
     :return: json格式的已选课程
     """
-    global chosen_classes
-    if chosen_classes is not None:
-        return chosen_classes
+    global chosenClasses
+    if chosenClasses is not None:
+        return chosenClasses
     response = session.post(
         f"http://zdbk.zju.edu.cn/jwglxt/xsxk/zzxkghb_cxZzxkGhbChoosed.html?gnmkdm={GNMKDM}&su={username}",
         data={
@@ -83,8 +83,8 @@ def getChosenClasses():
         },
         headers=headers
     )
-    chosen_classes = response.json()
-    return chosen_classes
+    chosenClasses = response.json()
+    return chosenClasses
 
 
 def updateCoursesJson():
@@ -135,12 +135,12 @@ def updateClassJson(wishList: WishList):
     with open("courses.json", "r", encoding="UTF-8") as f:
         course_data = json.load(f)
 
-    course_code_contained = []
+    courseCodeContained = []
     details = []
     for wish in wishList.wishes:
         for course in course_data:
             if Course.isEqualCourseCode(course["kcdm"], wish.courseCode):
-                course_code_contained.append(course["kcdm"])
+                courseCodeContained.append(course["kcdm"])
                 data = {
                     "dl": "",
                     "xn": XN,
@@ -153,11 +153,11 @@ def updateClassJson(wishList: WishList):
                 details.append(response.json())
                 break
     for class_ in getChosenClasses():
-        if class_["t_kcdm"] not in course_code_contained:
+        if class_["t_kcdm"] not in courseCodeContained:
             # class和course的xkkh不一样
             for course in course_data:
                 if Course.isEqualCourseCode(course["kcdm"],class_["t_kcdm"]):
-                    course_code_contained.append(course["kcdm"])
+                    courseCodeContained.append(course["kcdm"])
                     data = {
                         "dl": "",
                         "xn": XN,
