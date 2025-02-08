@@ -151,8 +151,8 @@ class ScheduleTable(Canvas):
                                     pixel_length += font
                                 else:
                                     pixel_length += font * 2
-                            if pixel_length > 90 * (time - start_time) * 2:
-                                font = int(90 * (time - start_time) * 2 / pixel_length * font)
+                            if pixel_length > 90 * (time - start_time) * 1.414:
+                                font = int(90 * (time - start_time) * 1.414 / pixel_length * font)
                             # 课程的志愿里只有选上或者没选上的班一种
                             if last_course_name is not None and last_class.status == ClassStatus.CONFIRMED:
                                 fg = "black"
@@ -171,7 +171,7 @@ class ScheduleTable(Canvas):
                                 else:
                                     pixel_length += font * 2
                             if pixel_length > 90 * (time - start_time):
-                                font = int(90 * (time - start_time) / pixel_length * font)
+                                font = int(90 * (time - start_time) / pixel_length * font * 1.414)
                             self.create_window(80 + 100 * weekday - 50, (start_time * 20 + time * 20) - 10*(time - start_time),
                                                window=Label(self.master, text=last_course_name, fg="black",
                                                             bg="#F1F1F1",
