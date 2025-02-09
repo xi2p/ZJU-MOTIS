@@ -5,7 +5,6 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter.messagebox import showinfo, showerror, askokcancel
 from lib import colorizer as idc
 import idlelib.percolator as idp
-from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
 import network
 import threading
@@ -125,8 +124,8 @@ class ScheduleTable(Canvas):
         for weekday in range(1, 8):
             lastCourseName = ''
             startTime = 0
-            lastClass = None
-            lastDuality = False
+            lastHasNotSelected = False
+            lastHasSelected = False
             # 这里有两种情况，一种是这个课程的志愿里只有选上或者没选上的班，另一种是这个课程的志愿里两者都有
             # 如果是第二种情况，这一个单元格里既要显示蓝色的字，又要显示黑色的字
             for time in range(1, 15):
@@ -135,12 +134,10 @@ class ScheduleTable(Canvas):
                 else:
                     classTime = ClassTime([], [(weekday, time)])
                 courseName = ''
-                class_now = None
 
                 for class_ in self.classTable.classes:
                     if class_.classTime.isOverlapped(classTime):
                         courseName = class_.course.courseName
-                        class_now = class_
                         break
 
                 # 判断双重性
@@ -156,18 +153,22 @@ class ScheduleTable(Canvas):
                               and x.classTime.isOverlapped(classTime),
                     self.classTable.classes
                 )
-                if confirmedClasses and unfilteredClasses:
-                    duality = True
-                else:
-                    duality = False
 
-                if lastCourseName != courseName or courseName == '' or duality != lastDuality:
+                hasSelected = bool(confirmedClasses)
+                hasNotSelected = bool(unfilteredClasses)
+
+
+
+                if (lastCourseName != courseName or courseName == ''
+                        or hasSelected != lastHasSelected
+                        or hasNotSelected != lastHasNotSelected):
                     # 画上上一个课程的名字
                     self.create_line(
                         80 + 100*weekday - 100, 40*startTime, 80 + 100*weekday, 40*startTime,
                         fill='black', tags="fill"
                     )
                     # self.create_text(80 + 100*weekday - 50, (startTime+time)*10, text=lastCourseName)
+                    lastDuality = lastHasSelected and lastHasNotSelected
                     if lastCourseName:
                         if not lastDuality:
                             pixelLength = 0
@@ -180,7 +181,7 @@ class ScheduleTable(Canvas):
                             if pixelLength > 90 * (time - startTime) * 1.414:
                                 font = int(90 * (time - startTime) * 1.414 / pixelLength * font)
                             # 课程的志愿里只有选上或者没选上的班一种
-                            if lastCourseName is not None and lastClass.status == ClassStatus.CONFIRMED:
+                            if lastCourseName is not None and lastHasSelected:
                                 fg = "black"
                             else:
                                 fg = "blue"
@@ -211,8 +212,8 @@ class ScheduleTable(Canvas):
                                                anchor=CENTER, width=90, height=20 * (time - startTime) - 2,
                                                tags="fill")
                     lastCourseName = courseName
-                    lastClass = class_now
-                    lastDuality = duality
+                    lastHasSelected = hasSelected
+                    lastHasNotSelected = hasNotSelected
                     startTime = time
 
 
