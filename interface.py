@@ -235,4 +235,6 @@ interfaceList = [
     "belonging",
     "mark",
     "identification",
+    "academy",
+    "credit"
 ]
