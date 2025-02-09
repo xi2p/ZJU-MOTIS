@@ -7,7 +7,7 @@ from .Time import *
 class CourseType:
     def __init__(self, sort: str, belonging: str, mark: str, identification: str):
         """
-        课程类别由多个属性组成
+        课程类型由多个属性组成
         :param sort: 课程类别，如通识、专业基础课程、专业课等
         :param belonging: 课程归属，如当代社会、博雅技艺、思政类\军体类等
         :param mark: 课程标记，是否为通识核心课程
@@ -44,7 +44,6 @@ class Course:
         self.priority = 0       # 选课优先级。数字越大，优先级越高。非负整数
         self.strategy = Strategy(*STRATEGY_DEFAULT)
 
-        self.autoTeacherGroup = True    # 是否自动划分教师组（按照査老师数据划分）
         self.rated = False      # 是否已经给各班级评分。设置这个属性是为了减少网络IO
         self.classScoreList : List[List] = [] # [[class1, score1], ... ] # 存储各班级的评分
         self.teacherGroup = [[], [], [], []]
@@ -75,27 +74,22 @@ class Course:
         return self
 
     def onlyChooseFromTheseTeachers(self, *teacherName):
-        self.autoTeacherGroup = False
         self.requiredTeachers.extend(teacherName)
         return self
 
     def preferredTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
         self.teacherGroup[0].extend(teacherName)
         return self
 
     def goodTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
         self.teacherGroup[1].extend(teacherName)
         return self
 
     def normalTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
         self.teacherGroup[2].extend(teacherName)
         return self
 
     def badTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
         self.teacherGroup[3].extend(teacherName)
         return self
 
@@ -130,6 +124,13 @@ class Course:
     def __repr__(self):
         return f"Course({self.courseCode}, {self.courseName}, {self.credit}, {self.courseType}, {self.academy}, {self.status})"
 
+    def __eq__(self, other):
+        if not isinstance(other, Course):
+            raise TypeError(
+                "item must be an instance of Course"
+            )
+        return self.isEqualCourseCode(self.courseCode, other.courseCode)
+
     @staticmethod
     def isEqualCourseCode(code1:str, code2:str) -> bool:
         """
@@ -150,3 +151,82 @@ class Course:
         return any([
             new1 == new2, new1 == old2, old1 == new2, old1 == old2
         ])
+
+
+class CourseList(list):
+    def __init__(self):
+        super().__init__()
+
+    def withPriority(self, priority: int):
+        if priority < 0 or not isinstance(priority, int):
+            raise ValueError(
+                "Priority must be a non-negative integer!"
+            )
+        for course in self:
+            course.withPriority(priority)
+        return self
+
+    def withStrategy(self, *, hot: int, normal: int, cold: int):
+        for course in self:
+            course.withStrategy(hot=hot, normal=normal, cold=cold)
+        return self
+
+    def onlyChooseFromTheseTeachers(self, *teacherName):
+        for course in self:
+            course.onlyChooseFromTheseTeachers(*teacherName)
+        return self
+
+    def preferredTeacher(self, *teacherName):
+        for course in self:
+            course.preferredTeacher(*teacherName)
+        return self
+
+    def goodTeacher(self, *teacherName):
+        for course in self:
+            course.goodTeacher(*teacherName)
+        return self
+
+    def normalTeacher(self, *teacherName):
+        for course in self:
+            course.normalTeacher(*teacherName)
+        return self
+
+    def badTeacher(self, *teacherName):
+        for course in self:
+            course.badTeacher(*teacherName)
+        return self
+
+    def avoidTeacher(self, *teacherName):
+        for course in self:
+            course.avoidTeacher(*teacherName)
+        return self
+
+    def expectClassAt(self, classTime: ClassTime):
+        for course in self:
+            course.expectClassAt(classTime)
+        return self
+
+    def onlyChooseOneTime(self):
+        for course in self:
+            course.onlyChooseOneTime()
+        return self
+
+    def avoidClassAt(self, classTime: ClassTime):
+        for course in self:
+            course.avoidClassAt(classTime)
+        return self
+
+    def withTeacherFactor(self, factor: float):
+        for course in self:
+            course.withTeacherFactor(factor)
+        return self
+
+    def withTimeFactor(self, factor: float):
+        for course in self:
+            course.withTimeFactor(factor)
+        return self
+
+    def withPossibilityFactor(self, factor: float):
+        for course in self:
+            course.withPossibilityFactor(factor)
+        return self

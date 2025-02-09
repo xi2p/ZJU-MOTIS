@@ -335,13 +335,6 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
                 _timeDomain = _timeDomain + j
             timeDomainSet.append(_timeDomain)
 
-        # 删去与现有课表冲突的时间
-        timeDomainSet = [i for i in timeDomainSet if not classTable.isConflict(
-            Class("", course, [], "",
-                  i, [],
-                  0, 0, "", "", "", ""
-                  )
-        )]
     else:
         # 如果用户要求所有志愿的课程在同一时间段上课，那么就把各个班级的时间单独取出来拼成一个列表即可
         if course.status == Constants.CourseStatus.NOT_SELECTED:
@@ -354,7 +347,13 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
                                 and x.status == Constants.ClassStatus.CONFIRMED
                 )[0].classTime
             ]
-
+        # 删去与现有课表冲突的时间
+    timeDomainSet = [i for i in timeDomainSet if not classTable.isConflict(
+        Class("", course, [], "",
+              i, [],
+              0, 0, "", "", "", ""
+              )
+    )]
     # 现在time_domain_set内存储了所有可能的时间组合
     # 现在要找出每个时间组合内的最优志愿组合
     optimalCandidateCombination = []
@@ -397,7 +396,7 @@ def getClassTableRateList(classTable: ClassTable, wishList: WishList) -> List[fl
         if class_.course.status == Constants.CourseStatus.SELECTED and class_.course not in wishList.wishes:
             continue  # 已经选上了并且没有要求优化，不再参与运算
         priority = class_.course.priority
-        if class_.course in courseToRate:
+        if class_.course.courseCode in courseToRate:
             if class_.rate > courseToRate[class_.course.courseCode]:
                 result[maxPriority - priority] -= courseToRate[class_.course.courseCode]
                 result[maxPriority - priority] += class_.rate

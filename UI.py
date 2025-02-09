@@ -61,7 +61,7 @@ class ProgressBar(Canvas):
 
                 self.update()
 
-            time.sleep(0.06)
+            time.sleep(0.03)
         self.threadRunning = False
 
     def reset(self):
@@ -549,7 +549,8 @@ class Application(Tk):
             self.selectButton.config(text="自动选课完毕")
 
         except Exception as e:
-            showerror("选课失败", str(e)+'\n'+traceback.format_exc())
+            detail = traceback.format_exc()
+            showerror("选课失败", str(e)+'\n'+detail)
             self.updateButton.config(state=NORMAL)
             self.selectButton.config(state=NORMAL)
             self.selectButton.config(text="开始自动选课")
