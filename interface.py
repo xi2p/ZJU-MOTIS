@@ -5,7 +5,7 @@ from typing import Callable
 from Entities.Course import Course, CourseList, CourseType
 from Entities.Constants import *
 from Entities.WishList import WishList as _WishList
-from Entities.ClassTable import ClassTable
+from Entities.ClassTable import ClassTable as _ClassTable
 from Entities.Time import ClassTime
 from selectClass import selectClass
 from Entities.Strategy import Strategy
@@ -31,6 +31,15 @@ class WishList(_WishList):
         for course in courseList:
             super().append(course)
         return courseList
+
+
+class ClassTable(_ClassTable):
+    def __init__(self):
+        super().__init__()
+
+    def assumeNotSelectCourse(self, courseCode: str):
+        course = _data.getCourseFromCourseCode(courseCode)
+        super().assumeNotSelectCourse(course)
 
 
 class 课程类别:
@@ -219,6 +228,7 @@ interfaceList = [
     "withTeacherFactor",
     "withTimeFactor",
     "withPossibilityFactor",
+    "assumeNotSelectCourse",
     # 属性
     "courseType",
     "sort",

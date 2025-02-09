@@ -5,89 +5,13 @@
 """
 import builtins
 from . import highlightKw
+from interface import interfaceList
 import re
 import time
 from idlelib.config import idleConf
 from idlelib.delegator import Delegator
 
 DEBUG = False
-interfaceList = [
-    # 常量
-    "First",
-    "Second",
-    "Third",
-    "Fourth",
-    "Fifth",
-    "Sixth",
-    "Seventh",
-    "Eighth",
-    "Ninth",
-    "Tenth",
-    "Eleventh",
-    "Twelfth",
-    "Thirteenth",
-    "MorningEight",
-    "Morning",
-    "Afternoon",
-    "Night",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-    "FirstHalfSemester",
-    "SecondHalfSemester",
-    "课程类别",
-    "课程归属",
-    "课程标记",
-    "认定类别",
-    "通识",
-    "专业基础课程",
-    "专业课",
-    "政治类军体类",
-    "外语类",
-    "计算机类",
-    "自然科学通识类",
-    "中华传统",
-    "世界文明",
-    "当代社会",
-    "科技创新",
-    "文艺审美",
-    "生命探索",
-    "博雅技艺",
-    "通识核心课程",
-    "美育类",
-    "劳育类",
-    "创新创业类",
-    "心理健康类",
-    # 类
-    "ClassTime",
-    # 函数
-    "append",
-    "seek",
-    "withPriority",
-    "withStrategy",
-    "onlyChooseFromTheseTeachers",
-    "preferredTeacher",
-    "goodTeacher",
-    "normalTeacher",
-    "badTeacher",
-    "onlyChooseOneTime",
-    "avoidTeacher",
-    "expectClassAt",
-    "avoidClassAt",
-    "withTeacherFactor",
-    "withTimeFactor",
-    "withPossibilityFactor",
-    # 属性
-    "courseType",
-    "sort",
-    "belonging",
-    "mark",
-    "identification",
-]
 
 def any(name, alternates):
     "Return a named group pattern matching list of alternates."

@@ -315,3 +315,13 @@ def initClassTable(classTable: ClassTable.ClassTable):
             classTable.append(
                 classes[0]
             )
+
+    # 处理assumeNotSelectCourse
+    for course in classTable.assumeNotSelectCourses:
+        classTable.removeCourse(course)
+        course.status = Constants.CourseStatus.NOT_SELECTED
+        classes = filterClassSetByCondition(
+            lambda x: (Course.Course.isEqualCourseCode(course.courseCode, x.course.courseCode) and x.status == Constants.ClassStatus.CONFIRMED)
+        )
+        for class_ in classes:
+            class_.status = Constants.ClassStatus.NOT_SELECTED
