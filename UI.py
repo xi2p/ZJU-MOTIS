@@ -147,12 +147,14 @@ class ScheduleTable(Canvas):
                 confirmedClasses = filterClassSetByCondition(
                     lambda x: x.status == ClassStatus.CONFIRMED
                               and x.course.courseName == courseName
-                              and x.classTime.isOverlapped(classTime)
+                              and x.classTime.isOverlapped(classTime),
+                    self.classTable.classes
                 )
                 unfilteredClasses = filterClassSetByCondition(
                     lambda x: x.course.courseName == courseName
                               and x.status != ClassStatus.CONFIRMED
-                              and x.classTime.isOverlapped(classTime)
+                              and x.classTime.isOverlapped(classTime),
+                    self.classTable.classes
                 )
                 if confirmedClasses and unfilteredClasses:
                     duality = True
