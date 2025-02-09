@@ -130,14 +130,19 @@ def calculateClassRate(course: Course):
                     / (maxPossibility - minPossibility)
             )
         classToRateByPossibility[class_] = rate
-        class_.possibility = rate
+
 
     # 合并评分
     # 合并方法： 遍历所有班级，取出各个评分。将各个评分加权相加，得到最终评分。权值可由用户设定。
     for class_ in allClassOfCourse:
+        class_.teacherRate = classToRateByTeacher[class_]
+        class_.timeRate = classToRateByTime[class_]
+        class_.possibilityRate = classToRateByPossibility[class_]
+
         rate = (classToRateByTeacher[class_] * course.teacherFactor
                 + classToRateByTime[class_] * course.timeFactor
                 + classToRateByPossibility[class_] * course.possibilityFactor)
+
         class_.rate = rate
 
 
@@ -145,7 +150,7 @@ def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
     """
     找出一个班级集合内的最优志愿组合。本方法应由getCourseCandidateCombination调用。
     :param classSet: 班级集合。里面的班级应该是同一门课程的。
-    :return: 按照用户设定的条件解除的最优的三个班级（如果有的话）
+    :return: 按照用户设定的条件解出的最优的三个班级（如果有的话）
     """
     # 先获取是哪门课
     course = classSet[0].course
@@ -161,23 +166,39 @@ def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
         lambda x: not any([teacherName in x.course.avoidedTeachers for teacherName in x.teacherNames]),
         classSet
     )
+    # 没有余量的班级不要
+    classSet = data.filterClassSetByCondition(
+        lambda x: x.available > 0,
+        classSet
+    )
+    # 如果课程已经选上（即用户要求优化），那么要去掉比已经选上的班级更差的班级。此处不用考虑选上概率。
+    if course.status == Constants.CourseStatus.SELECTED:
+        selectedClass = data.filterClassSetByCondition(
+            lambda x: Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
+                      and x.status == Constants.ClassStatus.CONFIRMED
+        )[0]
+        classSet = data.filterClassSetByCondition(
+            lambda x: x.teacherRate*course.teacherFactor + x.timeRate*course.timeFactor
+                      >= selectedClass.teacherRate*course.teacherFactor + selectedClass.timeRate*course.timeFactor,
+            classSet
+        )
     if not classSet:
-        raise ValueError("No class in classSet fits teacher requirement")
+        return []
 
     # 接下来开始从classSet里面选出最优的三个班级
     # 选班的策略：
 
     # 1.    将课程按照possibility进行分类，分为hot, normal, cold三个列表。列表内按照评分从高到低排序。
-    #       将P'[-1, -1/3)划为hot，(1/3, 1]划为cold，(-1/3, 1/3)划为normal
+    #       将P'[0, 1/3)划为hot，(2/3, 1]划为cold，(1/3, 2/3)划为normal
     # 2.    按照course.strategy的设定，从hot, normal, cold里面选出相应数量的评分前n的班级。
     #       如果某个类别的班级数量不够，就从更冷门类别里面选。如果班级总数小于3，就不选那么多。
     hotClasses = []
     normalClasses = []
     coldClasses = []
     for class_ in classSet:
-        if class_.possibility >= 1 / 3:
+        if class_.possibilityRate >= 2 / 3:
             coldClasses.append(class_)
-        elif class_.possibility <= -1 / 3:
+        elif class_.possibilityRate <= 1 / 3:
             hotClasses.append(class_)
         else:
             normalClasses.append(class_)
@@ -299,25 +320,41 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
 
     _timeDomainSet: List[List[Time.ClassTime]] = []  # 存储所有可能的时间组合
     current: List[List[Time.ClassTime | int]] = []
-    _getTimeCombination(_timeDomainSet, current, 0)
-    _timeDomainSet = [i for i in _timeDomainSet if i != []]  # 去除空列表
 
-    # _timeDomainSet 内的元素是一个列表，列表内的元素是ClassTime对象
-    # 现在把每个列表的多个元素合并成一个元素
-    timeDomainSet: List[Time.ClassTime] = []
-    for i in _timeDomainSet:
-        _timeDomain = i[0]
-        for j in i[1:]:
-            _timeDomain = _timeDomain + j
-        timeDomainSet.append(_timeDomain)
+    # 如果用户没说要求所有志愿的课程在同一时间段上课，那么就找出所有可能的时间组合
+    if not course.onlyChooseOneTimeFlag:
+        _getTimeCombination(_timeDomainSet, current, 0)
+        _timeDomainSet = [i for i in _timeDomainSet if i != []]  # 去除空列表
 
-    # 删去与现有课表冲突的时间
-    timeDomainSet = [i for i in timeDomainSet if not classTable.isConflict(
-        Class("", course, [], "",
-              i, [],
-              0, 0, "", "", "", ""
-              )
-    )]
+        # _timeDomainSet 内的元素是一个列表，列表内的元素是ClassTime对象
+        # 现在把每个列表的多个元素合并成一个元素
+        timeDomainSet: List[Time.ClassTime] = []
+        for i in _timeDomainSet:
+            _timeDomain = i[0]
+            for j in i[1:]:
+                _timeDomain = _timeDomain + j
+            timeDomainSet.append(_timeDomain)
+
+        # 删去与现有课表冲突的时间
+        timeDomainSet = [i for i in timeDomainSet if not classTable.isConflict(
+            Class("", course, [], "",
+                  i, [],
+                  0, 0, "", "", "", ""
+                  )
+        )]
+    else:
+        # 如果用户要求所有志愿的课程在同一时间段上课，那么就把各个班级的时间单独取出来拼成一个列表即可
+        if course.status == Constants.CourseStatus.NOT_SELECTED:
+            timeDomainSet = [i[0] for i in classTimeSet]
+        else:
+            # 如果这门课已经选上了，那么就只有一个时间可以，就是这个选上的班级上课的时间
+            timeDomainSet = [
+                data.filterClassSetByCondition(
+                    lambda x: Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
+                                and x.status == Constants.ClassStatus.CONFIRMED
+                )[0].classTime
+            ]
+
     # 现在time_domain_set内存储了所有可能的时间组合
     # 现在要找出每个时间组合内的最优志愿组合
     optimalCandidateCombination = []
@@ -336,7 +373,7 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
     # 去重
     result = []
     for i in optimalCandidateCombination:
-        if i not in result:
+        if i not in result and i != []:
             result.append(i)
     return result
 

@@ -51,6 +51,7 @@ class Course:
         self.requiredTeachers = []
         self.avoidedTeachers = []
 
+        self.onlyChooseOneTimeFlag = False   # 是否要求所有志愿的课程在同一时间段上课
         self.expectedTimeList : List[ClassTime] = []  # 期望上课时间
         self.avoidTimeList : List[ClassTime] = [] # 避免上课时间
 
@@ -106,6 +107,10 @@ class Course:
         self.expectedTimeList.append(classTime)
         return self
 
+    def onlyChooseOneTime(self):
+        self.onlyChooseOneTimeFlag = True
+        return self
+
     def avoidClassAt(self, classTime: ClassTime):
         self.avoidTimeList.append(classTime)
         return self
@@ -120,10 +125,6 @@ class Course:
 
     def withPossibilityFactor(self, factor: float):
         self.possibilityFactor = factor
-        return self
-
-    def withStatus(self, status: str):      # 测试接口！！！
-        self.status = status
         return self
 
     def __repr__(self):
