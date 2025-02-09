@@ -422,8 +422,11 @@ class Application(Tk):
         # 保存选课算法的执行状态。True表示正在执行，False表示未执行
         self.selectStatus = False
 
+        scrollX = Scrollbar(self, orient=HORIZONTAL)
         Label(self, text="选课要求描述区(Python代码):", font=('Consolas', 16)).place(x=0, y=10, height=20, anchor=W)
-        self.codePad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 12))
+        self.codePad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 12), xscrollcommand=scrollX.set, wrap=NONE)
+        scrollX.config(command=self.codePad.xview)
+
         self.codePad.focus_set()
         idc.color_config(self.codePad)
         self.codePad.focus_set()
@@ -431,7 +434,8 @@ class Application(Tk):
         p = idp.Percolator(self.codePad)
         d = idc.ColorDelegator()
         p.insertfilter(d)
-        self.codePad.place(x=0, y=20, width=600, height=580, anchor=NW)
+        self.codePad.place(x=0, y=20, width=600, height=560, anchor=NW)
+        scrollX.place(x=0, y=580, width=580, height=20, anchor=NW)
 
         self.accountLabel = Label(self, text="学号:", font=('Consolas', 16))
         self.passwordLabel = Label(self, text="密码:", font=('Consolas', 16))
@@ -530,18 +534,30 @@ class Application(Tk):
         self.selectButton.config(text="正在选课...")
 
         try:
+            ok = askokcancel("警告", "请不要执行来源不可信任的代码\n否则您的计算机系统可能遭到攻击\n是否继续？")
+            if not ok:
+                self.updateButton.config(state=NORMAL)
+                self.selectButton.config(state=NORMAL)
+                self.selectButton.config(text="开始自动选课")
+                self.showButton.config(state=NORMAL)
+                self.selectStatus = False
+                self.disableProgress()
+                return
+
             self.enableProgress()
             exec(self.codePad.get(1.0, END))
+
+            ok = True
             if len(wishList.wishes) > 50:
                 ok = askokcancel("提示", "愿望清单内课程数量较多，选课可能消耗大量时间，是否继续？")
-                if not ok:
-                    self.updateButton.config(state=NORMAL)
-                    self.selectButton.config(state=NORMAL)
-                    self.selectButton.config(text="开始自动选课")
-                    self.showButton.config(state=NORMAL)
-                    self.selectStatus = False
-                    self.disableProgress()
-                    return
+            if not ok:
+                self.updateButton.config(state=NORMAL)
+                self.selectButton.config(state=NORMAL)
+                self.selectButton.config(text="开始自动选课")
+                self.showButton.config(state=NORMAL)
+                self.selectStatus = False
+                self.disableProgress()
+                return
 
             self.stringVar.set("下载班级档案...")
             network.updateClassJson(wishList, self.doubleVar)
