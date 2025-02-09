@@ -2,7 +2,7 @@ import traceback
 from tkinter import *
 from tkinter.ttk import Button, Entry
 from tkinter.scrolledtext import ScrolledText
-from tkinter.messagebox import showinfo, showerror
+from tkinter.messagebox import showinfo, showerror, askokcancel
 from lib import colorizer as idc
 import idlelib.percolator as idp
 from Entities.Constants import ClassStatus, CourseStatus
@@ -531,6 +531,16 @@ class Application(Tk):
         try:
             self.enableProgress()
             exec(self.codePad.get(1.0, END))
+            if len(wishList.wishes) > 50:
+                ok = askokcancel("提示", "愿望清单内课程数量较多，选课可能消耗大量时间，是否继续？")
+                if not ok:
+                    self.updateButton.config(state=NORMAL)
+                    self.selectButton.config(state=NORMAL)
+                    self.selectButton.config(text="开始自动选课")
+                    self.showButton.config(state=NORMAL)
+                    self.selectStatus = False
+                    self.disableProgress()
+                    return
 
             self.stringVar.set("下载班级档案...")
             network.updateClassJson(wishList, self.doubleVar)
