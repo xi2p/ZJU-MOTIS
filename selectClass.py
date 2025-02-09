@@ -86,25 +86,25 @@ def calculateClassRate(course: Course):
     # 评分方法：
     # 1.    遍历所有班级，查询这个班级的ClassTime。
     #       如果这个时间在course.expectedTimeList里面，这个班级评分为1分
-    #       如果这个时间在course.avoidTimeList里面，这个班级评分为-1分
-    #       如果这个时间不在course.expectedTimeList和course.avoidTimeList里面，这个班级评分为0分
+    #       如果这个时间在course.avoidTimeList里面，这个班级评分为0分
+    #       如果这个时间不在course.expectedTimeList和course.avoidTimeList里面，这个班级评分为0.5分
     # 2.    产生一个{班级-分数}的字典，存储所有班级的分数
     classToRateByTime = {}
     for class_ in allClassOfCourse:
-        rate = 0
+        rate = 0.5
         for classTime in course.expectedTimeList:
             if class_.classTime.isOverlapped(classTime):
                 rate = 1
                 break
         for classTime in course.avoidTimeList:
             if class_.classTime.isOverlapped(classTime):
-                rate = -1
+                rate = 0
                 break
         classToRateByTime[class_] = rate
 
     # 给所有班级根据选上的概率评分
     # 1.    按照class内部的数据，算出选上的概率P。P=余量/待选人数。
-    # 2.    将所有的P映射到[-1, 1]区间，得到一个P'。P'即为这个班级的概率评分。
+    # 2.    将所有的P映射到[0, 1]区间，得到一个P'。P'即为这个班级的概率评分。
     # 3.    产生一个{班级-分数}的字典，存储所有班级的分数，并
     classToRateByPossibility = {}
     minPossibility = 1
@@ -119,7 +119,7 @@ def calculateClassRate(course: Course):
         minPossibility = min(minPossibility, possibility)
         maxPossibility = max(maxPossibility, possibility)
         classToRateByPossibility[class_] = possibility
-    # 映射到[-1, 1]区间
+    # 映射到[0, 1]区间
 
     for class_ in allClassOfCourse:
         if maxPossibility == minPossibility:
@@ -127,7 +127,7 @@ def calculateClassRate(course: Course):
         else:
             rate = (
                     (classToRateByPossibility[class_] - minPossibility)
-                    / (maxPossibility - minPossibility) * 2
+                    / (maxPossibility - minPossibility)
             )
         classToRateByPossibility[class_] = rate
         class_.possibility = rate
@@ -139,11 +139,6 @@ def calculateClassRate(course: Course):
                 + classToRateByTime[class_] * course.timeFactor
                 + classToRateByPossibility[class_] * course.possibilityFactor)
         class_.rate = rate
-
-    # 至此，所有班级已经按照评分规则由分数高到低排序。
-    # 对应关系存储在class_and_rate_list里面
-    # 格式：[(class1, 9.9), (class2, 9.8), ...]
-    # hot_classes, normal_classes, cold_classes里面存储了热门班级，普通班级，冷门班级
 
 
 def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
