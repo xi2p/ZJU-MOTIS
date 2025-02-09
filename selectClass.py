@@ -146,10 +146,11 @@ def calculateClassRate(course: Course):
         class_.rate = rate
 
 
-def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
+def getOptimalCandidatesWithinClassSet(classSet: List[Class], classTable) -> List[Class]:
     """
     找出一个班级集合内的最优志愿组合。本方法应由getCourseCandidateCombination调用。
     :param classSet: 班级集合。里面的班级应该是同一门课程的。
+    :param classTable: 课表对象
     :return: 按照用户设定的条件解出的最优的三个班级（如果有的话）
     """
     # 先获取是哪门课
@@ -182,6 +183,12 @@ def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
                       >= selectedClass.teacherRate*course.teacherFactor + selectedClass.timeRate*course.timeFactor,
             classSet
         )
+    # 去掉插不进课表的班级。此处检验是为了解决期末考试的冲突。上课时间的话在选timeDomain的时候已经检查过了。
+    classSet = data.filterClassSetByCondition(
+        lambda x: not classTable.isConflict(x),
+        classSet
+    )
+
     if not classSet:
         return []
 
@@ -347,7 +354,7 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
                                 and x.status == Constants.ClassStatus.CONFIRMED
                 )[0].classTime
             ]
-        # 删去与现有课表冲突的时间
+        # 删去上课时间与现有课表冲突的时间
     timeDomainSet = [i for i in timeDomainSet if not classTable.isConflict(
         Class("", course, [], "",
               i, [],
@@ -366,14 +373,14 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
                       and Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
         )
         # 然后按照策略找出class_set里面最好的三个班级（如果有的话）
-        optimalClassSet = getOptimalCandidatesWithinClassSet(classSet)  # 存储最优的三个班级
+        optimalClassSet = getOptimalCandidatesWithinClassSet(classSet, classTable)  # 存储最优的三个班级
         optimalCandidateCombination.append(optimalClassSet)
 
-    # 去重
     result = []
     for i in optimalCandidateCombination:
         if i not in result and i != []:
             result.append(i)
+
     return result
 
 
