@@ -9,6 +9,9 @@ MOTIS: Multi-criteria Optimization Tool for Intelligent Scheduling
 ![release](https://img.shields.io/badge/release-v1.0.2-green)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 
+[TOC]
+
+前排提示：这个文档是**代码教程**和**给人工智能看的提示词**。如果你是想学习软件基本用法，可以访问https://xi2p.github.io。
 
 ## 简介
 
@@ -29,13 +32,15 @@ MOTIS在选课时，支持您对各课程提出一些需求，具体如下：
 
 - 课程的选择优先级
 - 课程的上课教师（指定上课教师/指定避免的上课教师/配置喜欢哪些老师/配置不喜欢哪些老师）
-- 课程的上课时间（配置期待的上课时间/不期待的上课时间）
+- 课程的上课时间（配置期待的上课时间/不期待的上课时间/要求三个志愿的上课时间一致）
 - 课程的志愿选择策略（3个志愿怎么分配，选几个热门班级）
 - 更改`教师好坏`/`时间好坏`/`选上概率`三个变量对于你来说的重要性。（可以让程序更偏向选择选上概率大的课程之类）
 
 ## 代码教程
 
 下面介绍的是程序的一些代码。你可以选择跳过这部分。但是如果你想自己写代码来描述选课愿望，那么你需要阅读下面的文档。
+
+*(我的代码里注释很全，命名很规范，语义很强，建议直接阅读项目源代码)*
 
 ### 一个简单的示例
 
@@ -66,32 +71,34 @@ wishList.append("PPAE0065G").withPriority(4).avoidClassAt(MorningEight + First +
 ```python
 wishList.append(courseCode: str) -> Course
 ```
-通过这个语句向wishList中添加课程。比如，wishList.append("MATH1136G")就是向wishList中添加一个课程代码为MATH1136G的课程（微积分（甲）II ）。
+通过这个语句向wishList中添加课程。比如，`wishList.append("MATH1136G")`就是向wishList中添加一个课程代码为`MATH1136G`的课程（微积分（甲）II ）。
 
 这个函数的输入参数是一个字符串，表示课程的代码。
 
 这个方法的返回值是课程代码对应的课程的Course对象。Course对象是一个课程对象，我们稍后介绍他。
 
-下面是wishList的部分源代码:
+---
+
+此外，可以通过下面的语句向愿望清单添加所有符合条件的课程并统一操作
+
+```
+wishList.seek(condition) -> CourseList
+```
+
+这是`v1.0.2`版本的新增特性。`condition`参数应是一个可执行函数（如`lambda表达式`），接受一个`Course`对象为参数，返回一个`bool`。若想完整使用`seek`功能，请阅读`Entities\Constants.py`、`Entities\Course.py`、`interface.py`。
+
+其用例如下：
 
 ```python
-class _WishList:
-    def __init__(self):
-        self.wishes : List[Course] = []
-        self.max_priority = -1
-
-    def append(self, course) -> Course:
-        self.wishes.append(course)
-        return course
-
-class WishList(_WishList):
-    def __init__(self):
-        super().__init__()
-
-    def append(self, courseCode: str) -> Course:
-        course = _data.getCourseFromCourseCode(courseCode)  # 通过课程代码获取课程对象
-        return super().append(course)
+wishList.seek(
+    lambda course: course.courseType.sort == 课程类别.专业基础课程 
+                   and course.academy == "信息与电子工程学院"
+).withPriority(1)
 ```
+
+这会把所有信电学院的专业基础课都加入愿望清单，并把这些课程的优先级设置为1。
+
+`wishList`相关源代码可以参见`interface.py`和`Entites\WishList.py`
 
 ### 课程类Course与需求描述
 
@@ -147,14 +154,14 @@ cold越多，对应越保守的策略，选上的概率越高。hot越多，对�
 
 如何评价一门课是好还是坏？可以从教师、时间、选上概率三个角度评分。程序的底层为你完成了评分的工作。现在你需要做的就是设置这三者的权值。
 
-teacherFactor表示用户认为教师对课程的重要性，是一个非负实数。这个值越大，表示用户认为教师对课程的重要性越高。
+`teacherFactor`表示用户认为教师对课程的重要性，是一个非负实数。这个值越大，表示用户认为教师对课程的重要性越高。
 
-同理还有timeFactor和possibilityFactor，分别表示用户认为时间和选上概率对课程的重要性。
+同理还有`timeFactor`和`possibilityFactor`，分别表示用户认为时间和选上概率对课程的重要性。
 
-teacherFactor越大，选课结果就会偏向选好老师的课。timeFactor越大，选课结果就会偏向选上课时间合适的课。possibilityFactor越大，选课结果就会偏向选上概率高的课。
+teacherFactor越大，选课结果就会偏向选好老师的课。`timeFactor`越大，选课结果就会偏向选上课时间合适的课。`possibilityFactor`越大，选课结果就会偏向选上概率高的课。
 
 当然，这三个值是相对的。同时增大这三个值不会选出老师也好、时间也好、选上概率又大的课。
-teacherFactor的默认值是1.0，timeFactor的默认值是1.0，possibilityFactor的默认值是3.0。
+`teacherFactor`的默认值是1.0，`timeFactor`的默认值是1.0，`possibilityFactor`的默认值是3.0。
 我们可以通过Course对象的下面三个方法来设置这三个因素的重要性：
 
 ```python
@@ -193,24 +200,13 @@ course.onlyChooseFromTheseTeachers("张三", "李四")
 
 #### 设置时间偏好
 
-程序内使用ClassTime对象来描述上课时间。所以我们必须先学习ClassTime类的知识。
+程序内使用`ClassTime`对象来描述上课时间。所以我们必须先学习`ClassTime`类的知识。
 
 ##### ClassTime对象
 
-ClassTime对象用于描述课程的上课时间。他的部分源代码如下：
+`ClassTime`对象用于描述课程的上课时间。他的源代码参见`Entities\ClassTime.py`
 
-```python
-class ClassTime:
-    def __init__(self, firstHalfTimeList: List[Tuple[int, int]], secondHalfTimeList: List[Tuple[int, int]]):
-        """
-        上课时间
-        :param firstHalfTimeList: 上半学期的课程时间 [(周几, 第几节课), ...]
-        :param secondHalfTimeList: 下半学期的课程时间 [(周几, 第几节课), ...]
-        """
-        self.firstHalfTimeList = firstHalfTimeList
-        self.secondHalfTimeList = secondHalfTimeList
-```
-想要描述一段上课时间，需要分上/下半学期来描述。ClassTime构造函数的第一个参数描述了上半学期的课程时间，第二个参数描述了下半学期的课程时间。
+想要描述一段上课时间，需要分上/下半学期来描述。`ClassTime`构造函数的第一个参数描述了上半学期的课程时间，第二个参数描述了下半学期的课程时间。
 
 其参数格式为：
 
@@ -230,7 +226,7 @@ ClassTime([(2, 1), (2, 2), (2, 3)], [(2, 1), (2, 2), (2, 3)])
 
 一周有七天，一天13节课。所以元组内第一个参数的范围是1-7, 第二个参数范围是1-13。
 
-值得注意的是，这个工具为我们提供了一些定义好的ClassTime对象，比如晚课、早八、周一的课，这是比较常用的。共有以下几种：
+值得注意的是，这个工具为我们提供了一些定义好的`ClassTime`对象，比如晚课、早八、周一的课，这是比较常用的。共有以下几种：
 ```python
 First   # 第一节课，上午第一节课
 Second  # 第二节课，上午第二节课
@@ -269,7 +265,7 @@ Sunday = ClassTime([(7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7), (7, 
                     [(7, 1), (7, 2), (7, 3), (7, 4), (7, 5), (7, 6), (7, 7), (7, 8), (7, 9), (7, 10), (7, 11), (7, 12), (7, 13)])
 ```
 
-ClassTime对象可以通过+运算符来组合。比如，下面的表达式表示所有的周六周日的课和上午的前两节课。
+`ClassTime`对象可以通过+运算符来组合。比如，下面的表达式表示所有的周六周日的课和上午的前两节课。
 
 ```python
 First + Second + Saturday + Sunday
@@ -294,6 +290,7 @@ FirstHalfSemester * Night
 ```python
 expectClassAt(self, classTime: ClassTime) -> Course # 设置期待的课程的上课时间
 avoidClassAt(self, classTime: ClassTime) -> Course  # 设置不希望的课程的上课时间
+onlyChooseOneTime(self) -> Course	# 设置要求这门课三个志愿的上课时间一致
 ```
 
 一个例子：
@@ -303,86 +300,7 @@ course.expectClassAt(Tuesday + Wednsday + Thursday + Friday).avoidClassAt(Mornin
 ```
 
 
-下面是Course对象的部分源代码：
-```python
-class Course:
-    def __init__(self, ...):
-        self.priority = 0       # 选课优先级。数字越大，优先级越高。非负整数
-        self.strategy = Strategy(*STRATEGY_DEFAULT) # 默认选课策略
-
-        self.teacherGroup = [[], [], [], []]
-        self.requiredTeachers = []
-        self.avoidedTeachers = []
-    
-        self.expectedTimeList : List[ClassTime] = []  # 期望上课时间
-        self.avoidTimeList : List[ClassTime] = [] # 避免上课时间
-    
-        self.teacherFactor = 1.0  # 教师因素权重
-        self.timeFactor = 1.0    # 时间因素权重
-        self.possibilityFactor = 3.0    # 选上的概率的权重
-
-
-    def withPriority(self, priority: int):
-        if priority < 0 or not isinstance(priority, int):
-            raise ValueError(
-                "Priority must be a non-negative integer!"
-            )
-        self.priority = priority
-        return self
-    
-    def withStrategy(self, *, hot: int, normal: int, cold: int):
-        self.strategy = Strategy(hot, normal, cold)
-        return self
-    
-    def onlyChooseFromTheseTeachers(self, *teacherName):
-        self.autoTeacherGroup = False
-        self.requiredTeachers.extend(teacherName)
-        return self
-    
-    def preferredTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
-        self.teacherGroup[0].extend(teacherName)
-        return self
-    
-    def goodTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
-        self.teacherGroup[1].extend(teacherName)
-        return self
-    
-    def normalTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
-        self.teacherGroup[2].extend(teacherName)
-        return self
-    
-    def badTeacher(self, *teacherName):
-        self.autoTeacherGroup = False
-        self.teacherGroup[3].extend(teacherName)
-        return self
-    
-    def avoidTeacher(self, *teacherName):
-        self.avoidedTeachers.extend(teacherName)
-        return self
-    
-    def expectClassAt(self, classTime: ClassTime):
-        self.expectedTimeList.append(classTime)
-        return self
-    
-    def avoidClassAt(self, classTime: ClassTime):
-        self.avoidTimeList.append(classTime)
-        return self
-    
-    def withTeacherFactor(self, factor: float):
-        self.teacherFactor = factor
-        return self
-    
-    def withTimeFactor(self, factor: float):
-        self.timeFactor = factor
-        return self
-    
-    def withPossibilityFactor(self, factor: float):
-        self.possibilityFactor = factor
-        return self
-```
+Course对象的源代码参见`Entites\Course.py`
 ### 示例
 
 以下是几个添加愿望课程并描述的例子:
@@ -394,8 +312,8 @@ wishList.append("MATH1136G").withPriority(10).withStrategy(hot=1, normal=1, cold
 wishList.append("MARX1002G").withPriority(8).preferredTeacher("王五").goodTeacher("赵六", "周七").avoidTeacher("张八").avoidClassAt(ClassTime([(2, 1), (2, 2), (2, 3)], [(2, 1), (2, 2), (2, 3)])
 # 这表示我希望选MARX1002G这门课，优先级为8，很喜欢王五老师的课，也比较喜欢赵六和周七老师的课，不喜欢张八老师的课。希望这门课在上半学期的周二的第一到第三节课，下半学期的周二的第一到第三节课上课。
 
-wishList.append("CSCI1001G").withPriority(5).withTeacherFactor(2.0).withTimeFactor(1.0).withPossibilityFactor(3.0)
-# 这表示我希望选CSCI1001G这门课，优先级为5，我认为教师对这门课的重要性是时间的两倍，选上的概率的三倍。
+wishList.append("CSCI1001G").withPriority(5).withTeacherFactor(2.0).withTimeFactor(1.0).withPossibilityFactor(3.0).onlyChooseOneTime(self)
+# 这表示我希望选CSCI1001G这门课，优先级为5，我认为教师对这门课的重要性是时间的两倍，选上的概率的三倍。这门课三个志愿应该占据同一个时间（占据相同的格子）
 ```
 
 接下来是一个完整的例子：
@@ -461,8 +379,6 @@ wishList.append("BEFS0402G").withPriority(3)
 
 打开MOTIS.exe（或者UI.py），先在右上角输入学号和密码并登录，才能执行后续操作。
 
-首次使用时，要点击右下角按钮“更新课程信息”。这执行了本地课程库与ZDBK的同步。
-
 在左侧代码输入框输入代码(**不会写代码？没关系往后看**)，然后点击右下角按钮开始选课。
 
 如果关闭了选课结果窗口，也可以按右下角按钮重新展示。
@@ -470,7 +386,7 @@ wishList.append("BEFS0402G").withPriority(3)
 如果本地运行项目源代码，还需要安装`requests`库：
 
 ```shell
-pip install -r requirements.txt
+pip install requests
 ```
 
 ### 自己写代码描述选课需求
@@ -529,6 +445,134 @@ MIT LICENSE
 ## 写给AI人工智能助手的话
 
 你好，我是这个手册的编写者。请你准确理解上面对于这个工具的描述，准确理解各API的用法。接下来用户会向你描述他的课程需求。请你将其转换为符合上面描述的Python代码。
+
+下面是`wishList`的部分源代码
+
+```python
+class _WishList:
+    def __init__(self):
+        self.wishes : List[Course] = []
+        self.max_priority = -1
+
+    def append(self, course) -> Course:
+        self.wishes.append(course)
+        return course
+
+class WishList(_WishList):
+    def __init__(self):
+        super().__init__()
+
+    def append(self, courseCode: str) -> Course:
+        course = _data.getCourseFromCourseCode(courseCode)
+        return super().append(course)
+
+    def seek(self, condition: Callable[[Course], bool]) -> CourseList:
+        """
+        把所有满足条件的课程加入到愿望清单中
+        :param condition: 可执行的函数，接受一个Course对象，返回一个bool值，表示是否满足条件
+        :return: 满足条件的课程列表CourseList对象
+        """
+        courseList = _data.filterCourseSetByCondition(condition)
+        for course in courseList:
+            super().append(course)
+        return courseList
+```
+
+`ClassTime`类的部分源代码如下
+
+```python
+class ClassTime:
+    def __init__(self, firstHalfTimeList: List[Tuple[int, int]], secondHalfTimeList: List[Tuple[int, int]]):
+        """
+        上课时间
+        :param firstHalfTimeList: 上半学期的课程时间 [(周几, 第几节课), ...]
+        :param secondHalfTimeList: 下半学期的课程时间 [(周几, 第几节课), ...]
+        """
+        self.firstHalfTimeList = firstHalfTimeList
+        self.secondHalfTimeList = secondHalfTimeList
+```
+
+`Course`类的部分源代码如下
+
+```python
+class Course:
+    def __init__(self, ...):
+        # 以下为选课策略
+        self.priority = 0       # 选课优先级。数字越大，优先级越高。非负整数
+        self.strategy = Strategy(*STRATEGY_DEFAULT)
+
+        self.teacherGroup = [[], [], [], []]
+        self.requiredTeachers = []
+        self.avoidedTeachers = []
+        
+        self.onlyChooseOneTimeFlag = False   # 是否要求所有志愿的课程在同一时间段上课
+        self.expectedTimeList : List[ClassTime] = []  # 期望上课时间
+        self.avoidTimeList : List[ClassTime] = [] # 避免上课时间
+
+        self.teacherFactor = 1.0  # 教师因素权重
+        self.timeFactor = 1.0    # 时间因素权重
+        self.possibilityFactor = 3.0    # 选上的概率的权重
+
+    def withPriority(self, priority: int):
+        if priority < 0 or not isinstance(priority, int):
+            raise ValueError(
+                "Priority must be a non-negative integer!"
+            )
+        self.priority = priority
+        return self
+
+    def withStrategy(self, *, hot: int, normal: int, cold: int):
+        self.strategy = Strategy(hot, normal, cold)
+        return self
+
+    def onlyChooseFromTheseTeachers(self, *teacherName):
+        self.requiredTeachers.extend(teacherName)
+        return self
+
+    def preferredTeacher(self, *teacherName):
+        self.teacherGroup[0].extend(teacherName)
+        return self
+
+    def goodTeacher(self, *teacherName):
+        self.teacherGroup[1].extend(teacherName)
+        return self
+
+    def normalTeacher(self, *teacherName):
+        self.teacherGroup[2].extend(teacherName)
+        return self
+
+    def badTeacher(self, *teacherName):
+        self.teacherGroup[3].extend(teacherName)
+        return self
+
+    def avoidTeacher(self, *teacherName):
+        self.avoidedTeachers.extend(teacherName)
+        return self
+
+    def expectClassAt(self, classTime: ClassTime):
+        self.expectedTimeList.append(classTime)
+        return self
+
+    def onlyChooseOneTime(self):
+        self.onlyChooseOneTimeFlag = True
+        return self
+
+    def avoidClassAt(self, classTime: ClassTime):
+        self.avoidTimeList.append(classTime)
+        return self
+
+    def withTeacherFactor(self, factor: float):
+        self.teacherFactor = factor
+        return self
+
+    def withTimeFactor(self, factor: float):
+        self.timeFactor = factor
+        return self
+
+    def withPossibilityFactor(self, factor: float):
+        self.possibilityFactor = factor
+        return self
+```
 
 **注意**！你不能使用上面没有提及的API和变量。当你觉得用户的描述难以转换为代码时，请不要输出代码，而是向用户询问更准确的信息。
 

@@ -600,8 +600,8 @@ class Application(Tk):
 
     def showAuthor(self):
         showinfo("关于MOTIS", """作者：xi2p
-版本：1.0.1(2025/2/8)
-Fork me on Github:
+版本：1.0.2(2025/2/10)
+Star me on Github:
 https://github.com/xi2p/ZJU-MOTIS
 """)
 
