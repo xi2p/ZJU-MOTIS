@@ -30,6 +30,7 @@ kwlist = [
     'await',
     'break',
     'class',
+    'classTable',
     'continue',
     'def',
     'del',

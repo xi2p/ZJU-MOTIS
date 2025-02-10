@@ -273,6 +273,35 @@ def filterClassSetByCondition(condition: Callable[[Class.Class], bool], srcSet=N
     return classSet
 
 
+def filterCourseSetByCondition(condition: Callable[[Course.Course], bool]) -> Course.CourseList:
+    """
+    通过条件过滤课程集合
+    :param condition: 一个函数，接受一个课程对象，返回一个bool值
+    :return: 符合条件的课程列表
+    """
+    result = Course.CourseList()
+
+    for course in courseData:
+        courseType = Course.CourseType(
+            course.get("kclb", ""),  # 课程类别
+            course.get("kcgs", ""),  # 课程归属
+            course.get("kcbs", ""),  # 课程标识
+            course.get("rdlb", "")  # 认定类别
+        )
+        course = Course.Course(
+            course["xskcdm"],  # 课程代码
+            course["kcmc"],  # 课程名称
+            float(re.findall(r"~(.*?)~", course["kcxx"])[0]),  # 学分
+            courseType,  # 课程类别
+            course["kkxy"],  # 开课学院
+            Constants.CourseStatus.NOT_SELECTED
+            # Constants.CourseStatus.SELECTED if int(target["kcxzzt"]) else Constants.CourseStatus.NOT_SELECTED  # 课程选择状态
+        )
+        if condition(course):
+            result.append(getCourseFromCourseCode(course.courseCode))
+    return result
+
+
 def initClassTable(classTable: ClassTable.ClassTable):
     """
     获取zdbk上用户已经选的课程，然后将这些课程插入到classTable中
@@ -287,16 +316,12 @@ def initClassTable(classTable: ClassTable.ClassTable):
                 classes[0]
             )
 
-if __name__ == '__main__':
-    loadClassData()
-    print("Start testing data.py")
-    c = filterClassSetByCondition(lambda x: (Course.Course.isEqualCourseCode("MATH1136G", x.course.courseCode)))
-    print(c)
-    print(len(courseObjectPool))
-
-    course1 = getCourseFromCourseCode("MATH1136G")
-    course2 = getCourseFromCourseCode("MATH1136G")
-    print(course1 == course2)
-
-    print(getTeacherRate("汪国军"))
-    print(getTeacherRate("汪国"))
+    # 处理assumeNotSelectCourse
+    for course in classTable.assumeNotSelectCourses:
+        classTable.removeCourse(course)
+        course.status = Constants.CourseStatus.NOT_SELECTED
+        classes = filterClassSetByCondition(
+            lambda x: (Course.Course.isEqualCourseCode(course.courseCode, x.course.courseCode) and x.status == Constants.ClassStatus.CONFIRMED)
+        )
+        for class_ in classes:
+            class_.status = Constants.ClassStatus.NOT_SELECTED

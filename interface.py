@@ -1,9 +1,11 @@
 """
 这个模块中的方法和类用于给用户调用
 """
-from Entities.Course import Course
+from typing import Callable
+from Entities.Course import Course, CourseList, CourseType
+from Entities.Constants import *
 from Entities.WishList import WishList as _WishList
-from Entities.ClassTable import ClassTable
+from Entities.ClassTable import ClassTable as _ClassTable
 from Entities.Time import ClassTime
 from selectClass import selectClass
 from Entities.Strategy import Strategy
@@ -19,10 +21,56 @@ class WishList(_WishList):
         course = _data.getCourseFromCourseCode(courseCode)
         return super().append(course)
 
+    def seek(self, condition: Callable[[Course], bool]) -> CourseList:
+        """
+        把所有满足条件的课程加入到愿望清单中
+        :param condition: 可执行的函数，接受一个Course对象，返回一个bool值，表示是否满足条件
+        :return: 满足条件的课程列表CourseList对象
+        """
+        courseList = _data.filterCourseSetByCondition(condition)
+        for course in courseList:
+            super().append(course)
+        return courseList
 
-def init():
-    _network.updateCoursesJson()
-    _data.loadCourseData()
+
+class ClassTable(_ClassTable):
+    def __init__(self):
+        super().__init__()
+
+    def assumeNotSelectCourse(self, courseCode: str):
+        course = _data.getCourseFromCourseCode(courseCode)
+        super().assumeNotSelectCourse(course)
+
+
+class 课程类别:
+    通识 = "通识"
+    专业基础课程 = "专业基础课程"
+    专业课 = "专业课"
+
+
+class 课程归属:
+    政治类军体类 = "政治类\\军体类"
+    外语类 = "外语类"
+    计算机类 = "计算机类"
+    自然科学通识类 = "自然科学通识类"
+    中华传统 = "中华传统"
+    世界文明 = "世界文明"
+    当代社会 = "当代社会"
+    科技创新 = "科技创新"
+    文艺审美 = "文艺审美"
+    生命探索 = "生命探索"
+    博雅技艺 = "博雅技艺"
+
+
+class 课程标记:
+    通识核心课程 = "通识核心课程"
+
+
+class 认定类别:
+    美育类 = "美育类"
+    劳育类 = "劳育类"
+    创新创业类 = "创新创业类"
+    心理健康类 = "心理健康类"
 
 
 # 时间常量
@@ -138,10 +186,34 @@ interfaceList = [
     "Sunday",
     "FirstHalfSemester",
     "SecondHalfSemester",
+    "课程类别",
+    "课程归属",
+    "课程标记",
+    "认定类别",
+    "通识",
+    "专业基础课程",
+    "专业课",
+    "政治类军体类",
+    "外语类",
+    "计算机类",
+    "自然科学通识类",
+    "中华传统",
+    "世界文明",
+    "当代社会",
+    "科技创新",
+    "文艺审美",
+    "生命探索",
+    "博雅技艺",
+    "通识核心课程",
+    "美育类",
+    "劳育类",
+    "创新创业类",
+    "心理健康类",
     # 类
     "ClassTime",
     # 函数
     "append",
+    "seek",
     "withPriority",
     "withStrategy",
     "onlyChooseFromTheseTeachers",
@@ -149,10 +221,20 @@ interfaceList = [
     "goodTeacher",
     "normalTeacher",
     "badTeacher",
+    "onlyChooseOneTime",
     "avoidTeacher",
     "expectClassAt",
     "avoidClassAt",
     "withTeacherFactor",
     "withTimeFactor",
     "withPossibilityFactor",
+    "assumeNotSelectCourse",
+    # 属性
+    "courseType",
+    "sort",
+    "belonging",
+    "mark",
+    "identification",
+    "academy",
+    "credit"
 ]

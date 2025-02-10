@@ -86,25 +86,25 @@ def calculateClassRate(course: Course):
     # 评分方法：
     # 1.    遍历所有班级，查询这个班级的ClassTime。
     #       如果这个时间在course.expectedTimeList里面，这个班级评分为1分
-    #       如果这个时间在course.avoidTimeList里面，这个班级评分为-1分
-    #       如果这个时间不在course.expectedTimeList和course.avoidTimeList里面，这个班级评分为0分
+    #       如果这个时间在course.avoidTimeList里面，这个班级评分为0分
+    #       如果这个时间不在course.expectedTimeList和course.avoidTimeList里面，这个班级评分为0.5分
     # 2.    产生一个{班级-分数}的字典，存储所有班级的分数
     classToRateByTime = {}
     for class_ in allClassOfCourse:
-        rate = 0
+        rate = 0.5
         for classTime in course.expectedTimeList:
             if class_.classTime.isOverlapped(classTime):
                 rate = 1
                 break
         for classTime in course.avoidTimeList:
             if class_.classTime.isOverlapped(classTime):
-                rate = -1
+                rate = 0
                 break
         classToRateByTime[class_] = rate
 
     # 给所有班级根据选上的概率评分
     # 1.    按照class内部的数据，算出选上的概率P。P=余量/待选人数。
-    # 2.    将所有的P映射到[-1, 1]区间，得到一个P'。P'即为这个班级的概率评分。
+    # 2.    将所有的P映射到[0, 1]区间，得到一个P'。P'即为这个班级的概率评分。
     # 3.    产生一个{班级-分数}的字典，存储所有班级的分数，并
     classToRateByPossibility = {}
     minPossibility = 1
@@ -119,7 +119,7 @@ def calculateClassRate(course: Course):
         minPossibility = min(minPossibility, possibility)
         maxPossibility = max(maxPossibility, possibility)
         classToRateByPossibility[class_] = possibility
-    # 映射到[-1, 1]区间
+    # 映射到[0, 1]区间
 
     for class_ in allClassOfCourse:
         if maxPossibility == minPossibility:
@@ -127,30 +127,31 @@ def calculateClassRate(course: Course):
         else:
             rate = (
                     (classToRateByPossibility[class_] - minPossibility)
-                    / (maxPossibility - minPossibility) * 2
+                    / (maxPossibility - minPossibility)
             )
         classToRateByPossibility[class_] = rate
-        class_.possibility = rate
+
 
     # 合并评分
     # 合并方法： 遍历所有班级，取出各个评分。将各个评分加权相加，得到最终评分。权值可由用户设定。
     for class_ in allClassOfCourse:
+        class_.teacherRate = classToRateByTeacher[class_]
+        class_.timeRate = classToRateByTime[class_]
+        class_.possibilityRate = classToRateByPossibility[class_]
+
         rate = (classToRateByTeacher[class_] * course.teacherFactor
                 + classToRateByTime[class_] * course.timeFactor
                 + classToRateByPossibility[class_] * course.possibilityFactor)
+
         class_.rate = rate
 
-    # 至此，所有班级已经按照评分规则由分数高到低排序。
-    # 对应关系存储在class_and_rate_list里面
-    # 格式：[(class1, 9.9), (class2, 9.8), ...]
-    # hot_classes, normal_classes, cold_classes里面存储了热门班级，普通班级，冷门班级
 
-
-def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
+def getOptimalCandidatesWithinClassSet(classSet: List[Class], classTable) -> List[Class]:
     """
     找出一个班级集合内的最优志愿组合。本方法应由getCourseCandidateCombination调用。
     :param classSet: 班级集合。里面的班级应该是同一门课程的。
-    :return: 按照用户设定的条件解除的最优的三个班级（如果有的话）
+    :param classTable: 课表对象
+    :return: 按照用户设定的条件解出的最优的三个班级（如果有的话）
     """
     # 先获取是哪门课
     course = classSet[0].course
@@ -166,23 +167,45 @@ def getOptimalCandidatesWithinClassSet(classSet: List[Class]) -> List[Class]:
         lambda x: not any([teacherName in x.course.avoidedTeachers for teacherName in x.teacherNames]),
         classSet
     )
+    # 没有余量的班级不要
+    classSet = data.filterClassSetByCondition(
+        lambda x: x.available > 0,
+        classSet
+    )
+    # 如果课程已经选上（即用户要求优化），那么要去掉比已经选上的班级更差的班级。此处不用考虑选上概率。
+    if course.status == Constants.CourseStatus.SELECTED:
+        selectedClass = data.filterClassSetByCondition(
+            lambda x: Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
+                      and x.status == Constants.ClassStatus.CONFIRMED
+        )[0]
+        classSet = data.filterClassSetByCondition(
+            lambda x: x.teacherRate*course.teacherFactor + x.timeRate*course.timeFactor
+                      >= selectedClass.teacherRate*course.teacherFactor + selectedClass.timeRate*course.timeFactor,
+            classSet
+        )
+    # 去掉插不进课表的班级。此处检验是为了解决期末考试的冲突。上课时间的话在选timeDomain的时候已经检查过了。
+    classSet = data.filterClassSetByCondition(
+        lambda x: not classTable.isConflict(x),
+        classSet
+    )
+
     if not classSet:
-        raise ValueError("No class in classSet fits teacher requirement")
+        return []
 
     # 接下来开始从classSet里面选出最优的三个班级
     # 选班的策略：
 
     # 1.    将课程按照possibility进行分类，分为hot, normal, cold三个列表。列表内按照评分从高到低排序。
-    #       将P'[-1, -1/3)划为hot，(1/3, 1]划为cold，(-1/3, 1/3)划为normal
+    #       将P'[0, 1/3)划为hot，(2/3, 1]划为cold，(1/3, 2/3)划为normal
     # 2.    按照course.strategy的设定，从hot, normal, cold里面选出相应数量的评分前n的班级。
     #       如果某个类别的班级数量不够，就从更冷门类别里面选。如果班级总数小于3，就不选那么多。
     hotClasses = []
     normalClasses = []
     coldClasses = []
     for class_ in classSet:
-        if class_.possibility >= 1 / 3:
+        if class_.possibilityRate >= 2 / 3:
             coldClasses.append(class_)
-        elif class_.possibility <= -1 / 3:
+        elif class_.possibilityRate <= 1 / 3:
             hotClasses.append(class_)
         else:
             normalClasses.append(class_)
@@ -304,19 +327,34 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
 
     _timeDomainSet: List[List[Time.ClassTime]] = []  # 存储所有可能的时间组合
     current: List[List[Time.ClassTime | int]] = []
-    _getTimeCombination(_timeDomainSet, current, 0)
-    _timeDomainSet = [i for i in _timeDomainSet if i != []]  # 去除空列表
 
-    # _timeDomainSet 内的元素是一个列表，列表内的元素是ClassTime对象
-    # 现在把每个列表的多个元素合并成一个元素
-    timeDomainSet: List[Time.ClassTime] = []
-    for i in _timeDomainSet:
-        _timeDomain = i[0]
-        for j in i[1:]:
-            _timeDomain = _timeDomain + j
-        timeDomainSet.append(_timeDomain)
+    # 如果用户没说要求所有志愿的课程在同一时间段上课，那么就找出所有可能的时间组合
+    if not course.onlyChooseOneTimeFlag:
+        _getTimeCombination(_timeDomainSet, current, 0)
+        _timeDomainSet = [i for i in _timeDomainSet if i != []]  # 去除空列表
 
-    # 删去与现有课表冲突的时间
+        # _timeDomainSet 内的元素是一个列表，列表内的元素是ClassTime对象
+        # 现在把每个列表的多个元素合并成一个元素
+        timeDomainSet: List[Time.ClassTime] = []
+        for i in _timeDomainSet:
+            _timeDomain = i[0]
+            for j in i[1:]:
+                _timeDomain = _timeDomain + j
+            timeDomainSet.append(_timeDomain)
+
+    else:
+        # 如果用户要求所有志愿的课程在同一时间段上课，那么就把各个班级的时间单独取出来拼成一个列表即可
+        if course.status == Constants.CourseStatus.NOT_SELECTED:
+            timeDomainSet = [i[0] for i in classTimeSet]
+        else:
+            # 如果这门课已经选上了，那么就只有一个时间可以，就是这个选上的班级上课的时间
+            timeDomainSet = [
+                data.filterClassSetByCondition(
+                    lambda x: Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
+                                and x.status == Constants.ClassStatus.CONFIRMED
+                )[0].classTime
+            ]
+        # 删去上课时间与现有课表冲突的时间
     timeDomainSet = [i for i in timeDomainSet if not classTable.isConflict(
         Class("", course, [], "",
               i, [],
@@ -335,14 +373,14 @@ def getCourseCandidateCombination(course: Course, classTable: ClassTable) -> Lis
                       and Course.isEqualCourseCode(course.courseCode, x.course.courseCode)
         )
         # 然后按照策略找出class_set里面最好的三个班级（如果有的话）
-        optimalClassSet = getOptimalCandidatesWithinClassSet(classSet)  # 存储最优的三个班级
+        optimalClassSet = getOptimalCandidatesWithinClassSet(classSet, classTable)  # 存储最优的三个班级
         optimalCandidateCombination.append(optimalClassSet)
 
-    # 去重
     result = []
     for i in optimalCandidateCombination:
-        if i not in result:
+        if i not in result and i != []:
             result.append(i)
+
     return result
 
 
@@ -365,7 +403,7 @@ def getClassTableRateList(classTable: ClassTable, wishList: WishList) -> List[fl
         if class_.course.status == Constants.CourseStatus.SELECTED and class_.course not in wishList.wishes:
             continue  # 已经选上了并且没有要求优化，不再参与运算
         priority = class_.course.priority
-        if class_.course in courseToRate:
+        if class_.course.courseCode in courseToRate:
             if class_.rate > courseToRate[class_.course.courseCode]:
                 result[maxPriority - priority] -= courseToRate[class_.course.courseCode]
                 result[maxPriority - priority] += class_.rate

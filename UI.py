@@ -2,10 +2,9 @@ import traceback
 from tkinter import *
 from tkinter.ttk import Button, Entry
 from tkinter.scrolledtext import ScrolledText
-from tkinter.messagebox import showinfo, showerror
+from tkinter.messagebox import showinfo, showerror, askokcancel
 from lib import colorizer as idc
 import idlelib.percolator as idp
-from Entities.Constants import ClassStatus, CourseStatus
 from interface import *
 import network
 import threading
@@ -51,7 +50,7 @@ class ProgressBar(Canvas):
             index = (index + 1) % self.frameNum
 
             if self.progress != self.doubleVar.get() or self.text != self.stringVar.get():
-                self.create_rectangle(10 + (self.width - 20) * self.progress, 8,
+                self.create_rectangle(10, 8,
                                       10 + (self.width - 20) * self.doubleVar.get(), 11, fill='#14A8DD',
                                       outline='#14A8DD', tags='progress')
                 self.progress = self.doubleVar.get()
@@ -61,7 +60,7 @@ class ProgressBar(Canvas):
 
                 self.update()
 
-            time.sleep(0.06)
+            time.sleep(0.03)
         self.threadRunning = False
 
     def reset(self):
@@ -125,8 +124,8 @@ class ScheduleTable(Canvas):
         for weekday in range(1, 8):
             lastCourseName = ''
             startTime = 0
-            lastClass = None
-            lastDuality = False
+            lastHasNotSelected = False
+            lastHasSelected = False
             # 这里有两种情况，一种是这个课程的志愿里只有选上或者没选上的班，另一种是这个课程的志愿里两者都有
             # 如果是第二种情况，这一个单元格里既要显示蓝色的字，又要显示黑色的字
             for time in range(1, 15):
@@ -135,37 +134,41 @@ class ScheduleTable(Canvas):
                 else:
                     classTime = ClassTime([], [(weekday, time)])
                 courseName = ''
-                class_now = None
 
                 for class_ in self.classTable.classes:
                     if class_.classTime.isOverlapped(classTime):
                         courseName = class_.course.courseName
-                        class_now = class_
                         break
 
                 # 判断双重性
                 confirmedClasses = filterClassSetByCondition(
                     lambda x: x.status == ClassStatus.CONFIRMED
                               and x.course.courseName == courseName
-                              and x.classTime.isOverlapped(classTime)
+                              and x.classTime.isOverlapped(classTime),
+                    self.classTable.classes
                 )
                 unfilteredClasses = filterClassSetByCondition(
                     lambda x: x.course.courseName == courseName
                               and x.status != ClassStatus.CONFIRMED
-                              and x.classTime.isOverlapped(classTime)
+                              and x.classTime.isOverlapped(classTime),
+                    self.classTable.classes
                 )
-                if confirmedClasses and unfilteredClasses:
-                    duality = True
-                else:
-                    duality = False
 
-                if lastCourseName != courseName or courseName == '' or duality != lastDuality:
+                hasSelected = bool(confirmedClasses)
+                hasNotSelected = bool(unfilteredClasses)
+
+
+
+                if (lastCourseName != courseName or courseName == ''
+                        or hasSelected != lastHasSelected
+                        or hasNotSelected != lastHasNotSelected):
                     # 画上上一个课程的名字
                     self.create_line(
                         80 + 100*weekday - 100, 40*startTime, 80 + 100*weekday, 40*startTime,
                         fill='black', tags="fill"
                     )
                     # self.create_text(80 + 100*weekday - 50, (startTime+time)*10, text=lastCourseName)
+                    lastDuality = lastHasSelected and lastHasNotSelected
                     if lastCourseName:
                         if not lastDuality:
                             pixelLength = 0
@@ -178,7 +181,7 @@ class ScheduleTable(Canvas):
                             if pixelLength > 90 * (time - startTime) * 1.414:
                                 font = int(90 * (time - startTime) * 1.414 / pixelLength * font)
                             # 课程的志愿里只有选上或者没选上的班一种
-                            if lastCourseName is not None and lastClass.status == ClassStatus.CONFIRMED:
+                            if lastCourseName is not None and lastHasSelected:
                                 fg = "black"
                             else:
                                 fg = "blue"
@@ -209,8 +212,8 @@ class ScheduleTable(Canvas):
                                                anchor=CENTER, width=90, height=20 * (time - startTime) - 2,
                                                tags="fill")
                     lastCourseName = courseName
-                    lastClass = class_now
-                    lastDuality = duality
+                    lastHasSelected = hasSelected
+                    lastHasNotSelected = hasNotSelected
                     startTime = time
 
 
@@ -275,7 +278,7 @@ class CandidateTable(Canvas):
             y += 80+len(classes)*60+40
 
         # 通过滑动条滚动，展示所有内容
-        self.maxY = y
+        self.maxY = y + 80
         self.nowYDelta = 0
         self.bind("<MouseWheel>", self.onMouseWheel)
 
@@ -289,6 +292,80 @@ class CandidateTable(Canvas):
         self.move("all", 0, delta)
 
 
+class DifferenceTable(Canvas):
+    def __init__(self, master):
+        """
+        展示选课算法对课表产生的差异
+        依次展示以下内容：
+        1. 成功选上的未选课程
+        2. 成功优化的已选课程
+        3. 未选上的课程
+        4. 未优化的已选课程
+        """
+        super().__init__(master, width=800, height=720, bg='#F1F1F1')
+        successSelected = []
+        successOptimized = []
+        failedSelected = []
+        failedOptimized = []
+        for wish in wishList.wishes:
+            if wish.status == CourseStatus.NOT_SELECTED:
+                if filterClassSetByCondition(lambda x: x.course == wish, classTable.classes):
+                    successSelected.append(wish)
+                else:
+                    failedSelected.append(wish)
+            else:
+                if filterClassSetByCondition(lambda x: x.course == wish and x.status != ClassStatus.CONFIRMED,
+                                             classTable.classes):
+                    successOptimized.append(wish)
+                else:
+                    failedOptimized.append(wish)
+        y = 10
+        for course in successSelected + successOptimized + failedSelected + failedOptimized:
+            self.drawCourse(y, course)
+            y += 80
+        # 通过滑动条滚动，展示所有内容
+        self.maxY = y + 80
+        self.nowYDelta = 0
+        self.bind("<MouseWheel>", self.onMouseWheel)
+
+    def drawCourse(self, y: int, course: Course):
+        """
+        画出一门课程的信息
+        :param y: 这一课程块的y坐标
+        :param course: 课程对象
+        """
+        x = 10
+        self.create_rectangle(x, y, 800 - x, y + 60, fill='white', outline="white")
+        self.create_text(x + 10, y + 20, text="课程代码：" + course.courseCode, font=('simHei', 12), fill="blue", anchor=W)
+        self.create_text(x + 10, y + 40, text="课程名称：" + course.courseName, font=('simHei', 12), fill="blue", anchor=W)
+        if course.status == CourseStatus.NOT_SELECTED:
+            if filterClassSetByCondition(lambda x: x.course == course, classTable.classes):
+                text = "成功选择"
+                color = "green"
+            else:
+                text = "未能选择"
+                color = "red"
+        else:
+            if filterClassSetByCondition(lambda x: x.course == course and x.status != ClassStatus.CONFIRMED, classTable.classes):
+                text = "成功优化"
+                color = "green"
+            else:
+                text = "未优化"
+                color = "gray"
+        self.create_text(800-x-10, y+30, text=text, font=('simHei', 24), fill=color, anchor=E)
+
+    def onMouseWheel(self, *args):
+        delta = args[0].delta/2
+        if self.nowYDelta+delta > 0:
+            delta = 0
+        if self.nowYDelta+delta < 720-self.maxY:
+            delta = 0
+        self.nowYDelta += delta
+        self.move("all", 0, delta)
+
+
+
+
 class ResultWindow(Toplevel):
     def __init__(self, master):
         super().__init__(master)
@@ -300,10 +377,12 @@ class ResultWindow(Toplevel):
         self.button1 = Button(self, text="春学期", command=lambda: self.show(0))
         self.button2 = Button(self, text="夏学期", command=lambda: self.show(1))
         self.button3 = Button(self, text="志愿表", command=lambda: self.show(2))
+        self.button4 = Button(self, text="细节表", command=lambda: self.show(3))
         self.nameLabel.place(x=780, y=0, height=40, anchor=NE)
         self.button1.place(x=0, y=0, width=80, height=40, anchor=NW)
         self.button2.place(x=85, y=0, width=80, height=40, anchor=NW)
         self.button3.place(x=170, y=0, width=80, height=40, anchor=NW)
+        self.button4.place(x=255, y=0, width=80, height=40, anchor=NW)
         self.geometry("780x600")
 
     def show(self, code: int):
@@ -323,6 +402,11 @@ class ResultWindow(Toplevel):
             self.nameLabel.config(text="志愿表")
             self.geometry("800x760")
             self.nameLabel.place(x=800, y=0, height=40, anchor=NE)
+        elif code == 3:
+            self.showWidget = DifferenceTable(self)
+            self.nameLabel.config(text="细节表")
+            self.geometry("800x760")
+            self.nameLabel.place(x=800, y=0, height=40, anchor=NE)
         self.showWidget.place(x=0, y=40, anchor=NW)
 
 
@@ -338,8 +422,11 @@ class Application(Tk):
         # 保存选课算法的执行状态。True表示正在执行，False表示未执行
         self.selectStatus = False
 
+        scrollX = Scrollbar(self, orient=HORIZONTAL)
         Label(self, text="选课要求描述区(Python代码):", font=('Consolas', 16)).place(x=0, y=10, height=20, anchor=W)
-        self.codePad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 12))
+        self.codePad = ScrolledText(self, bg='white', fg='white', font=('Consolas', 12), xscrollcommand=scrollX.set, wrap=NONE)
+        scrollX.config(command=self.codePad.xview)
+
         self.codePad.focus_set()
         idc.color_config(self.codePad)
         self.codePad.focus_set()
@@ -347,7 +434,8 @@ class Application(Tk):
         p = idp.Percolator(self.codePad)
         d = idc.ColorDelegator()
         p.insertfilter(d)
-        self.codePad.place(x=0, y=20, width=600, height=580, anchor=NW)
+        self.codePad.place(x=0, y=20, width=600, height=560, anchor=NW)
+        scrollX.place(x=0, y=580, width=580, height=20, anchor=NW)
 
         self.accountLabel = Label(self, text="学号:", font=('Consolas', 16))
         self.passwordLabel = Label(self, text="密码:", font=('Consolas', 16))
@@ -446,8 +534,30 @@ class Application(Tk):
         self.selectButton.config(text="正在选课...")
 
         try:
+            ok = askokcancel("警告", "请不要执行来源不可信任的代码\n否则您的计算机系统可能遭到攻击\n是否继续？")
+            if not ok:
+                self.updateButton.config(state=NORMAL)
+                self.selectButton.config(state=NORMAL)
+                self.selectButton.config(text="开始自动选课")
+                self.showButton.config(state=NORMAL)
+                self.selectStatus = False
+                self.disableProgress()
+                return
+
             self.enableProgress()
             exec(self.codePad.get(1.0, END))
+
+            ok = True
+            if len(wishList.wishes) > 50:
+                ok = askokcancel("提示", "愿望清单内课程数量较多，选课可能消耗大量时间，是否继续？")
+            if not ok:
+                self.updateButton.config(state=NORMAL)
+                self.selectButton.config(state=NORMAL)
+                self.selectButton.config(text="开始自动选课")
+                self.showButton.config(state=NORMAL)
+                self.selectStatus = False
+                self.disableProgress()
+                return
 
             self.stringVar.set("下载班级档案...")
             network.updateClassJson(wishList, self.doubleVar)
@@ -466,7 +576,8 @@ class Application(Tk):
             self.selectButton.config(text="自动选课完毕")
 
         except Exception as e:
-            showerror("选课失败", str(e)+'\n'+traceback.format_exc())
+            detail = traceback.format_exc()
+            showerror("选课失败", str(e)+'\n'+detail)
             self.updateButton.config(state=NORMAL)
             self.selectButton.config(state=NORMAL)
             self.selectButton.config(text="开始自动选课")
@@ -489,9 +600,10 @@ class Application(Tk):
 
     def showAuthor(self):
         showinfo("关于MOTIS", """作者：xi2p
-版本：1.0.1(2025/2/8)
-Fork me on Github:
+版本：1.0.2(2025/2/10)
+Star me on Github:
 https://github.com/xi2p/ZJU-MOTIS
+软件交流QQ群：836702761
 """)
 
     def enableProgress(self):

@@ -38,7 +38,9 @@ class Class:
         self.location = location
 
         self._rate : Union[float, None] = None   # 系统给这门课算出的评分。由data.py中的calculateClassRate(course)函数计算并填充。
-        self._possibility : Union[float, None] = None  # 选上的概率。由data.py中的calculateClassRate(course)函数计算并填充。
+        self._teacherRate : Union[float, None] = None  # 教师评分。由data.py中的calculateClassRate(course)函数计算并填充。
+        self._timeRate : Union[float, None] = None  # 时间评分。由data.py中的calculateClassRate(course)函数计算并填充。
+        self._possibilityRate : Union[float, None] = None  # 选上概率评分。由data.py中的calculateClassRate(course)函数计算并填充。
 
     def isConflict(self, item):
         if not isinstance(item, Class):
@@ -77,14 +79,34 @@ class Class:
         self._rate = value
 
     @property
-    def possibility(self):
-        if self._possibility is None:
+    def teacherRate(self):
+        if self._teacherRate is None:
             raise ValueError("Possibility is not calculated yet. Use data.calculateClassRate() ahead.")
-        return self._possibility
+        return self._teacherRate
 
-    @possibility.setter
-    def possibility(self, value):
-        self._possibility = value
+    @teacherRate.setter
+    def teacherRate(self, value):
+        self._teacherRate = value
+
+    @property
+    def timeRate(self):
+        if self._timeRate is None:
+            raise ValueError("Possibility is not calculated yet. Use data.calculateClassRate() ahead.")
+        return self._timeRate
+
+    @timeRate.setter
+    def timeRate(self, value):
+        self._timeRate = value
+
+    @property
+    def possibilityRate(self):
+        if self._possibilityRate is None:
+            raise ValueError("Possibility is not calculated yet. Use data.calculateClassRate() ahead.")
+        return self._possibilityRate
+
+    @possibilityRate.setter
+    def possibilityRate(self, value):
+        self._possibilityRate = value
 
     def __eq__(self, other):
         if not isinstance(other, Class):
@@ -97,7 +119,7 @@ class Class:
         return hash(self.classCode)
 
     def __repr__(self):
-        return f"Class({self.classCode}, {self.teacherNames}, {self.available}, {self.unfiltered})"
+        return f"Class({self.classCode}, {self.teacherNames}, {self.rate})"
         # return f"Class({self.classCode}, {self.course}, {self.teacherNames}, {self.semester}, {self.classTime}, {self.examTimeList}, {self.available}, {self.unfiltered})"
 
 

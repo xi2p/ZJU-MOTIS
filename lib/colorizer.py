@@ -5,59 +5,13 @@
 """
 import builtins
 from . import highlightKw
+from interface import interfaceList
 import re
 import time
 from idlelib.config import idleConf
 from idlelib.delegator import Delegator
 
 DEBUG = False
-
-interfaceList = [
-    # 常量
-    "First",
-    "Second",
-    "Third",
-    "Fourth",
-    "Fifth",
-    "Sixth",
-    "Seventh",
-    "Eighth",
-    "Ninth",
-    "Tenth",
-    "Eleventh",
-    "Twelfth",
-    "Thirteenth",
-    "MorningEight",
-    "Morning",
-    "Afternoon",
-    "Night",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-    "FirstHalfSemester",
-    "SecondHalfSemester",
-    # 类
-    "ClassTime",
-    # 函数
-    "append",
-    "withPriority",
-    "withStrategy",
-    "onlyChooseFromTheseTeachers",
-    "preferredTeacher",
-    "goodTeacher",
-    "normalTeacher",
-    "badTeacher",
-    "avoidTeacher",
-    "expectClassAt",
-    "avoidClassAt",
-    "withTeacherFactor",
-    "withTimeFactor",
-    "withPossibilityFactor",
-]
 
 def any(name, alternates):
     "Return a named group pattern matching list of alternates."
