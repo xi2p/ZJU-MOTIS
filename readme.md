@@ -299,8 +299,35 @@ onlyChooseOneTime(self) -> Course	# 设置要求这门课三个志愿的上课�
 course.expectClassAt(Tuesday + Wednsday + Thursday + Friday).avoidClassAt(MorningEight)
 ```
 
-
 Course对象的源代码参见`Entites\Course.py`
+
+### 课程表对象
+
+软件提供了一个`classTable`对象描述来描述和指代课表。详情参见`Entities\ClassTable.py`、`interface.py`。
+
+#### 假设某课程没有选上
+
+我们有时可能会想看看，如果这门课没选的话，课表是怎么样的。
+
+这个功能可以通过`classTable`对象实现
+
+```python
+classTable.assumeNotSelectCourse(courseCode: str)
+```
+
+通过这条语句，我们可以假设没选上课程代码为`courseCode`的课。
+
+例如，下面的代码展示了假设没选`工程训练`和`机械制图及CAD设计`时，课表可以如何优化。
+
+```python
+classTable.assumeNotSelectCourse("ME1103F")  # 机械制图及CAD基础
+classTable.assumeNotSelectCourse("ME1002F")  # 工程训练
+wishList.append("MATH1136G").withPriority(10)  # 微积分
+wishList.append("PHY1001G").withPriority(9)  # 大学物理
+wishList.append("MATH1138F").withPriority(9)  # 常微分方程
+wishList.append("CS1241G").withPriority(7)  # 人工智能基础
+```
+
 ### 示例
 
 以下是几个添加愿望课程并描述的例子:
@@ -574,7 +601,7 @@ class Course:
         return self
 ```
 
-**注意**！你不能使用上面没有提及的API和变量。当你觉得用户的描述难以转换为代码时，请不要输出代码，而是向用户询问更准确的信息。
+**注意**！你不能使用全文没有提及的API和变量。当你觉得用户的描述难以转换为代码时，请不要输出代码，而是向用户询问更准确的信息。
 
 下面是你应该输出的代码的一个示例：
 
