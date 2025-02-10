@@ -603,6 +603,7 @@ class Application(Tk):
 版本：1.0.2(2025/2/10)
 Star me on Github:
 https://github.com/xi2p/ZJU-MOTIS
+软件交流QQ群：836702761
 """)
 
     def enableProgress(self):
