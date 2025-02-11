@@ -62,9 +62,10 @@ def loginZDBK() -> bool:
             "_eventId": "submit",
         }
     )
-    if "错误" in response.text:
-        return False
-    return True
+    for cookie in session.cookies:
+        if cookie.name == "iPlanetDirectoryPro":
+            return True
+    return False
 
 
 def getChosenClasses():
