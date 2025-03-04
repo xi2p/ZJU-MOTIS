@@ -158,6 +158,12 @@ def getOptimalCandidatesWithinClassSet(classSet: List[Class], classTable) -> Lis
 
     # 先初步筛选，去掉不符合条件的班级
     # 如果用户有指定一定要选择的教师
+
+    # classSet = data.filterClassSetByCondition(  # 滴定模式专用开关，非滴定模式请注释掉
+    #     lambda x: x.available > x.unfiltered or Course.isEqualCourseCode('OPT0900G', x.course.courseCode),
+    #     classSet
+    # )
+
     if course.requiredTeachers:
         classSet = data.filterClassSetByCondition(
             lambda x: all([teacherName in x.course.requiredTeachers for teacherName in x.teacherNames]),
