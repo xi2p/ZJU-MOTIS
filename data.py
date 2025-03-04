@@ -231,6 +231,9 @@ def loadClassData(doubleVar):
                 else:
                     class_status = Constants.ClassStatus.NOT_SELECTED
 
+                available = int(class_["rs"].split("/")[0])
+                unfiltered = int(class_["yxrs"].split("~")[1])
+
                 allClassSet.append(
                     Class.Class(
                         class_["xkkh"],
@@ -239,8 +242,8 @@ def loadClassData(doubleVar):
                         class_["xxq"],
                         getClassTimeFromString(class_["sksj"], class_["xxq"]),
                         getExamTimeListFromString(class_.get("kssj", "")),
-                        int(class_["rs"].split("/")[0]),
-                        int(class_["yxrs"].split("~")[1]),
+                        available,
+                        unfiltered,
                         class_status,
                         class_["sksj"],
                         class_["xxq"],
@@ -317,7 +320,7 @@ def initClassTable(classTable: ClassTable.ClassTable):
             )
 
     # 处理assumeNotSelectCourse
-    for course in classTable.assumeNotSelectCourses:
+    for course in classTable.getAssumeNotSelectCourse():
         classTable.removeCourse(course)
         course.status = Constants.CourseStatus.NOT_SELECTED
         classes = filterClassSetByCondition(

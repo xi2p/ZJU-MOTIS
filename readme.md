@@ -333,13 +333,17 @@ wishList.append("CS1241G").withPriority(7)  # 人工智能基础
 以下是几个添加愿望课程并描述的例子:
 
 ```python
-wishList.append("MATH1136G").withPriority(10).withStrategy(hot=1, normal=1, cold=1).onlyChooseFromTheseTeachers("张三", "李四").expectClassAt(Night)
+wishList.append("MATH1136G").withPriority(10).withStrategy(hot=1, normal=1, cold=1).onlyChooseFromTheseTeachers("张三",
+                                                                                                                "李四").expectClassAt(
+    Night)
 # 这表示我希望选MATH1136G这门课，优先级为10，选课策略是三个志愿选一个热门教学班，一个普通教学班，一个冷门教学班。只选张三和李四的课。希望这门课在上晚上的课上。
 
-wishList.append("MARX1002G").withPriority(8).preferredTeacher("王五").goodTeacher("赵六", "周七").avoidTeacher("张八").avoidClassAt(ClassTime([(2, 1), (2, 2), (2, 3)], [(2, 1), (2, 2), (2, 3)])
+wishList.append("MARX1002G").withPriority(8).preferredTeacher("王五").goodTeacher("赵六", "周七").avoidTeacher(
+    "张八").avoidClassAt(ClassTime([(2, 1), (2, 2), (2, 3)], [(2, 1), (2, 2), (2, 3)])
 # 这表示我希望选MARX1002G这门课，优先级为8，很喜欢王五老师的课，也比较喜欢赵六和周七老师的课，不喜欢张八老师的课。希望这门课在上半学期的周二的第一到第三节课，下半学期的周二的第一到第三节课上课。
 
-wishList.append("CSCI1001G").withPriority(5).withTeacherFactor(2.0).withTimeFactor(1.0).withPossibilityFactor(3.0).onlyChooseOneTime(self)
+wishList.append("CSCI1001G").withPriority(5).withTeacherFactor(2.0).withTimeFactor(1.0).withPossibilityFactor(
+    3.0).onlyChooseOneTime(self)
 # 这表示我希望选CSCI1001G这门课，优先级为5，我认为教师对这门课的重要性是时间的两倍，选上的概率的三倍。这门课三个志愿应该占据同一个时间（占据相同的格子）
 ```
 

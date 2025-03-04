@@ -9,7 +9,7 @@ from .Course import Course
 class ClassTable:
     def __init__(self):
         self.classes : List[Class] = []
-        self.assumeNotSelectCourses : List[Course] = []    # 假设未选中的课程
+        self.__assumeNotSelectCourse : List[Course] = []    # 假设未选中的课程
 
     def isConflict(self, item: Class) -> bool:
         """
@@ -38,7 +38,10 @@ class ClassTable:
         假设未选中某门课程，用于查看在此情况下选出来的课表是怎么样的。
         :param course: 课程对象
         """
-        self.assumeNotSelectCourses.append(course)
+        self.__assumeNotSelectCourse.append(course)
+
+    def getAssumeNotSelectCourse(self):
+        return self.__assumeNotSelectCourse
 
     def removeClass(self, item: Class):
         while item in self.classes:
