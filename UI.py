@@ -554,13 +554,47 @@ class Application(Tk):
             safe_globals = {
                 "__builtins__": None,  # 禁止使用内置危险函数
                 "wishList": wishList,  # 允许访问 wishList 对象
+                "classTable": classTable,  # 允许访问 classTable 对象
+                # 常量
+                "First": First,
+                "Second": Second,
+                "Third": Third,
+                "Fourth": Fourth,
+                "Fifth": Fifth,
+                "Sixth": Sixth,
+                "Seventh": Seventh,
+                "Eighth": Eighth,
+                "Ninth": Ninth,
+                "Tenth": Tenth,
+                "Eleventh": Eleventh,
+                "Twelfth": Twelfth,
+                "Thirteenth": Thirteenth,
+                "MorningEight": MorningEight,
+                "Morning": Morning,
+                "Afternoon": Afternoon,
+                "Night": Night,
+                "Monday": Monday,
+                "Tuesday": Tuesday,
+                "Wednesday": Wednesday,
+                "Thursday": Thursday,
+                "Friday": Friday,
+                "Saturday": Saturday,
+                "Sunday": Sunday,
+                "FirstHalfSemester": FirstHalfSemester,
+                "SecondHalfSemester": SecondHalfSemester,
+                "课程类别": 课程类别,
+                "课程归属": 课程归属,
+                "课程标记": 课程标记,
+                "认定类别": 认定类别,
+                # 类
+                "ClassTime": ClassTime,
             }
+
             safe_locals = {}
             try:
                 exec(user_code, safe_globals, safe_locals)
             except Exception as e:
-                showerror("选课代码错误", f"执行失败: {str(e)}\n{traceback.format_exc()}")
-                return
+                raise Exception(traceback.format_exc())
 
             ok = True
             if len(wishList.wishes) > 50:
