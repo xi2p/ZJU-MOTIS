@@ -439,7 +439,9 @@ class Application(Tk):
 
         self.accountLabel = Label(self, text="学号:", font=('Consolas', 16))
         self.passwordLabel = Label(self, text="密码:", font=('Consolas', 16))
-        self.accountEntry = Entry(self, show="*")
+        # self.accountEntry = Entry(self, show="*")
+        # 通常而言，学号不应当隐藏，因为学号是公开的信息，没有隐藏的必要，而且隐藏学号会给用户带来视觉上的困难？
+        self.accountEntry = Entry(self)
         self.passwordEntry = Entry(self, show="*")
         self.loginButton = Button(self, text="登录", command=self.login)
         self.loginStatusLabel = Label(self, text="未登录", fg="red")
@@ -545,7 +547,20 @@ class Application(Tk):
                 return
 
             self.enableProgress()
-            exec(self.codePad.get(1.0, END))
+
+            # 危险方法，进行修改
+            # exec(self.codePad.get(1.0, END))
+            user_code = self.codePad.get(1.0, END).strip()
+            safe_globals = {
+                "__builtins__": None,  # 禁止使用内置危险函数
+                "wishList": wishList,  # 允许访问 wishList 对象
+            }
+            safe_locals = {}
+            try:
+                exec(user_code, safe_globals, safe_locals)
+            except Exception as e:
+                showerror("选课代码错误", f"执行失败: {str(e)}\n{traceback.format_exc()}")
+                return
 
             ok = True
             if len(wishList.wishes) > 50:
